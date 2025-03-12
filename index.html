@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>微信每日问安服务配置</title>
+    <style>
+        body {
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            color: #333;
+            background-color: #f5f7fa;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin: 20px 0 40px;
+        }
+        
+        h1 {
+            color: #44b549;
+        }
+        
+        .form-card {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            margin-bottom: 20px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        
+        input[type="text"],
+        input[type="date"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        
+        .btn {
+            background-color: #44b549;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            transition: background-color 0.3s;
+        }
+        
+        .btn:hover {
+            background-color: #3a9c3d;
+        }
+        
+        .help-text {
+            font-size: 14px;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .section-title {
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+            margin-top: 30px;
+            margin-bottom: 20px;
+            color: #44b549;
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            color: #999;
+            font-size: 14px;
+        }
+
+        .success-message {
+            background-color: #dff0d8;
+            color: #3c763d;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .error-message {
+            background-color: #f2dede;
+            color: #a94442;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 20px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>微信每日问安服务配置</h1>
+            <p>配置您的微信测试号信息，开启每日问安服务</p>
+        </div>
+        
+        <div class="form-card">
+            <form id="configForm">
+                <h2 class="section-title">必填项：微信测试号配置</h2>
+                
+                <div class="form-group">
+                    <label for="userId">用户唯一标识</label>
+                    <input type="text" id="userId" name="user_id" required>
+                    <p class="help-text">请设置一个独特的用户ID，用于识别您的账户（例如：您的手机号或昵称）</p>
+                </div>
+                
+                <div class="form-group">
+                    <label for="appId">微信测试号AppID</label>
+                    <input type="text" id="appId" name="app_id" required>
+                    <p class="help-text">在微信测试号管理页面获取</p>
+                </div>
+                
+                <div class="form-group">
+                    <label for="appSecret">微信测试号AppSecret</label>
+                    <input type="text" id="appSecret" name="app_secret" required>
+                    <p class="help-text">在微信测试号管理页面获取</p>
+                </div>
+                
+                <div class="form-group">
+                    <label for="templateId">消息模板ID</label>
+                    <input type="text" id="templateId" name="template_id" required>
+                    <p class="help-text">在微信测试号管理页面创建模板后获取</p>
+                </div>
+                
+                <div class="form-group">
+                    <label for="userOpenid">接收者的OpenID</label>
+                    <input type="text" id="userOpenid" name="user_openid" required>
+                    <p class="help-text">关注测试号后获取的微信用户OpenID</p>
+                </div>
+                
+                <h2 class="section-title">选填项：个性化设置</h2>
+                
+                <div class="form-group">
+                    <label for="locationName">位置名称</label>
+                    <input type="text" id="locationName" name="location_name" placeholder="朝阳区">
+                    <p class="help-text">接收天气信息的地区，例如：朝阳区</p>
+                </div>
+                
+                <div class="form-group">
+                    <label for="admName">行政区名称</label>
+                    <input type="text" id="admName" name="adm_name" placeholder="北京市">
+                    <p class="help-text">接收天气信息的城市，例如：北京市</p>
+                </div>
+                
+                <div class="form-group">
+                    <label for="meetDate">相识日期</label>
+                    <input type="date" id="meetDate" name="meet_date">
+                    <p class="help-text">用于计算相识天数</p>
+                </div>
+                
+                <div class="form-group">
+                    <label for="partnerBirthday">伴侣生日</label>
+                    <input type="date" id="partnerBirthday" name="partner_birthday">
+                    <p class="help-text">用于计算距离生日的天数</p>
+                </div>
+                
+                <button type="submit" class="btn">保存配置</button>
+            </form>
+            
+            <div class="success-message" id="successMessage">
+                配置保存成功！您的每日问安服务已配置完成。
+            </div>
+            
+            <div class="error-message" id="errorMessage">
+                配置保存失败，请检查您的输入并重试。
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>微信每日问安服务 &copy; 2024</p>
+        </div>
+    </div>
+    
+    <script>
+        document.getElementById('configForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const jsonData = {};
+            
+            formData.forEach((value, key) => {
+                jsonData[key] = value;
+            });
+            
+            fetch('https://1337331310-2gg2yrldrk.ap-beijing.tencentscf.com/api/save-config', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(jsonData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('successMessage').style.display = 'block';
+                    document.getElementById('errorMessage').style.display = 'none';
+                    
+                    // 清空表单（仅保留用户ID）
+                    const userId = document.getElementById('userId').value;
+                    document.getElementById('configForm').reset();
+                    document.getElementById('userId').value = userId;
+                } else {
+                    document.getElementById('errorMessage').textContent = data.message || '配置保存失败，请检查您的输入并重试。';
+                    document.getElementById('errorMessage').style.display = 'block';
+                    document.getElementById('successMessage').style.display = 'none';
+                }
+            })
+            .catch(error => {
+                document.getElementById('errorMessage').textContent = '服务器错误，请稍后重试。';
+                document.getElementById('errorMessage').style.display = 'block';
+                document.getElementById('successMessage').style.display = 'none';
+                console.error('Error:', error);
+            });
+        });
+    </script>
+</body>
+</html> 
