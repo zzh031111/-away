@@ -208,15 +208,27 @@
                 jsonData[key] = value;
             });
             
+            console.log('Sending data:', jsonData);
+            
             fetch('https://1337331310-2gg2yrldrk.ap-beijing.tencentscf.com/api/save-config', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Accept': 'application/json'
                 },
+                mode: 'cors',
+                credentials: 'omit',
                 body: JSON.stringify(jsonData)
             })
-            .then(response => response.json())
+            .then(response => {
+                console.log('Response status:', response.status);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
+                console.log('Response data:', data);
                 if (data.success) {
                     document.getElementById('successMessage').style.display = 'block';
                     document.getElementById('errorMessage').style.display = 'none';
@@ -224,7 +236,7 @@
                     // 清空表单（仅保留用户ID）
                     const userId = document.getElementById('userId').value;
                     document.getElementById('configForm').reset();
-                    document.getElementById('userId').value = userId;
+                    document.getElementById('userId').value = userId;文档获取元素 ID 为“userId”的值并将其设置为 userId；
                 } else {
                     document.getElementById('errorMessage').textContent = data.message || '配置保存失败，请检查您的输入并重试。';
                     document.getElementById('errorMessage').style.display = 'block';
@@ -232,12 +244,12 @@
                 }
             })
             .catch(error => {
-                document.getElementById('errorMessage').textContent = '服务器错误，请稍后重试。';
+                console.error('Error details:', error);
+                document.getElementById('errorMessage').textContent = `服务器错误：${error.message}`;
                 document.getElementById('errorMessage').style.display = 'block';
                 document.getElementById('successMessage').style.display = 'none';
-                console.error('Error:', error);
             });
         });
-    </script>
+    </script>   > < /脚本
 </body>
-</html> 
+</html   超文本标记语言> 
