@@ -111,6 +111,20 @@
             margin-top: 20px;
             display: none;
         }
+        
+        .loading-message {
+            background-color: #fcf8e3;
+            color: #8a6d3b;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 20px;
+            display: none;
+        }
+        
+        .btn:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body>
@@ -125,9 +139,9 @@
                 <h2 class="section-title">必填项：微信测试号配置</h2>
                 
                 <div class="form-group">
-                    <label for="userId">用户唯一标识</label>
+                    <label for="userId">小红书商品订单号</label>
                     <input type="text" id="userId" name="user_id" required>
-                    <p class="help-text">请设置一个独特的用户ID，用于识别您的账户（例如：您的手机号或昵称）</p>
+                    <p class="help-text">请输入您的小红书商品订单号，作为您的唯一标识</p>
                 </div>
                 
                 <div class="form-group">
@@ -190,6 +204,10 @@
             <div class="error-message" id="errorMessage">
                 配置保存失败，请检查您的输入并重试。
             </div>
+            
+            <div class="loading-message" id="loadingMessage">
+                正在保存配置中，请稍候...
+            </div>
         </div>
         
         <div class="footer">
@@ -200,6 +218,18 @@
     <script>
         document.getElementById('configForm').addEventListener('submit', function(e) {
             e.preventDefault();
+            
+            // 显示加载中的提示，隐藏其他提示
+            const loadingMessage = document.getElementById('loadingMessage');
+            const successMessage = document.getElementById('successMessage');
+            const errorMessage = document.getElementById('errorMessage');
+            const submitButton = document.querySelector('button[type="submit"]');
+            
+            loadingMessage.style.display = 'block';
+            successMessage.style.display = 'none';
+            errorMessage.style.display = 'none';
+            submitButton.disabled = true;
+            submitButton.textContent = '保存中...';
             
             const formData = new FormData(this);
             const jsonData = {};
@@ -240,25 +270,42 @@
                 const result = data.body ? JSON.parse(data.body) : data;
                 console.log('Final result:', result);
                 
+                // 恢复按钮状态
+                submitButton.disabled = false;
+                submitButton.textContent = '保存配置';
+                loadingMessage.style.display = 'none';
+                
                 if (result.success) {
-                    document.getElementById('successMessage').style.display = 'block';
-                    document.getElementById('errorMessage').style.display = 'none';
+                    successMessage.textContent = '配置保存成功！您的每日问安服务已配置完成。';
+                    successMessage.style.display = 'block';
+                    errorMessage.style.display = 'none';
                     
-                    // 清空表单（仅保留用户ID）
+                    // 清空表单（仅保留用户ID/订单号）
                     const userId = document.getElementById('userId').value;
                     document.getElementById('configForm').reset();
                     document.getElementById('userId').value = userId;
+                    
+                    // 3秒后自动隐藏成功消息
+                    setTimeout(() => {
+                        successMessage.style.display = 'none';
+                    }, 3000);
                 } else {
-                    document.getElementById('errorMessage').textContent = result.message || '配置保存失败，请检查您的输入并重试。';
-                    document.getElementById('errorMessage').style.display = 'block';
-                    document.getElementById('successMessage').style.display = 'none';
+                    errorMessage.textContent = result.message || '配置保存失败，请检查您的输入并重试。';
+                    errorMessage.style.display = 'block';
+                    successMessage.style.display = 'none';
                 }
             })
             .catch(error => {
                 console.error('Error details:', error);
-                document.getElementById('errorMessage').textContent = `请求失败：${error.message}`;
-                document.getElementById('errorMessage').style.display = 'block';
-                document.getElementById('successMessage').style.display = 'none';
+                
+                // 恢复按钮状态
+                submitButton.disabled = false;
+                submitButton.textContent = '保存配置';
+                loadingMessage.style.display = 'none';
+                
+                errorMessage.textContent = `请求失败：${error.message}`;
+                errorMessage.style.display = 'block';
+                successMessage.style.display = 'none';
             });
         });
     </script>
