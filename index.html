@@ -201,58 +201,66 @@
         document.getElementById('configForm').addEventListener('submit', function(e) {
             e.preventDefault();
             
-            const formData = new FormData(this);const   常量 formData = new   新 FormData(this   这);  // 创建一个新的 FormData 对象，将当前对象（this）作为参数传
+            const formData = new FormData(this);
             const jsonData = {};
             
-            formData.forEach((value, key) => {formData.forEach((值， 键) => {
+            formData.forEach((value, key) => {
                 jsonData[key] = value;
             });
             
-            console.log('Sending data:', jsonData);控制台日志输出：“正在发送数据：”，jsonData；
+            console.log('Sending data:', jsonData);
             
             fetch('https://1337331310-2gg2yrldrk.ap-beijing.tencentscf.com/api/save-config', {
-                method: 'POST',   方法:“文章”,
-                headers: {   标题:{
-                    'Content-Type': 'application/json',“内容类型”： “应用/JSON”，
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
                     'Accept': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest'
                 },
-                mode: 'cors',   模式:“打仗”,
-                credentials: 'omit',   凭证:“省略”,
+                mode: 'cors',
+                credentials: 'omit',
                 body: JSON.stringify(jsonData)
             })
             .then(response => {
-                console.log('Response status:', response.status);控制台日志输出：“响应状态：”，响应状态；
-                if (!response.ok) {   If (!response   响应.ok   好吧) {
-                    throw new Error(`HTTP error! status: ${response.status}`);抛出新错误（`HTTP 错误！状态码：${response   响应.status}`）；
-                }
-                return response.json();   返回 response 的 json 格式数据；
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers);
+                return response.text().then(text => {
+                    console.log('Raw response:', text);
+                    try {
+                        return text ? JSON.parse(text) : {};
+                    } catch (e) {
+                        console.error('JSON parse error:', e);
+                        throw new Error('Invalid JSON response');
+                    }
+                });
             })
             .then(data => {
-                console.log('Response data:', data);控制台日志输出：“响应数据：”，data；
-                if (data.success) {   If (data   数据.success) {
-                    document.getElementById('successMessage').style.display = 'block';document.getElementById('successMessage').style   风格.display = 'block'； 
-
-这段 JavaScript 代码的作用是将 id 为 "successMessage" 的元素的显示样式设置为
+                console.log('Parsed response data:', data);
+                // 检查响应中是否包含body字段（适应云函数的响应格式）
+                const result = data.body ? JSON.parse(data.body) : data;
+                console.log('Final result:', result);
+                
+                if (result.success) {
+                    document.getElementById('successMessage').style.display = 'block';
                     document.getElementById('errorMessage').style.display = 'none';
                     
                     // 清空表单（仅保留用户ID）
-                    const userId = document.getElementById('userId').value;const   常量 用户 ID = document.getElementById('userId').value   价值
+                    const userId = document.getElementById('userId').value;
                     document.getElementById('configForm').reset();
-                    document.getElementById('userId').value = userId;文档获取元素 ID 为“userId”的值并将其设置为 userId；   用户标识;
+                    document.getElementById('userId').value = userId;
                 } else {
-                    document.getElementById('errorMessage').textContent = data.message || '配置保存失败，请检查您的输入并重试。';
+                    document.getElementById('errorMessage').textContent = result.message || '配置保存失败，请检查您的输入并重试。';
                     document.getElementById('errorMessage').style.display = 'block';
                     document.getElementById('successMessage').style.display = 'none';
                 }
             })
-            .catch(error => {   .catch(错误=> {
-                console.error('Error details:', error);控制台错误（输出）：“错误详情：”，错误；
-                document.getElementById('errorMessage').textContent = `服务器错误：${error.message}`;
+            .catch(error => {
+                console.error('Error details:', error);
+                document.getElementById('errorMessage').textContent = `请求失败：${error.message}`;
                 document.getElementById('errorMessage').style.display = 'block';
                 document.getElementById('successMessage').style.display = 'none';
             });
         });
-    </script>   > < /脚本
-</body>   身体< / >
+    </script>
+</body>
 </html> 
