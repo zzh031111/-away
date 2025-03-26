@@ -125,89 +125,159 @@
             background-color: #cccccc;
             cursor: not-allowed;
         }
+
+        .template-example {
+            background-color: #f8f9fa;
+            border-left: 4px solid #4caf50;
+            padding: 15px;
+            margin: 20px 0;
+            font-family: monospace;
+            white-space: pre-wrap;
+            font-size: 14px;
+            overflow-x: auto;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
             <h1>微信每日问安服务配置</h1>
-            <p>配置您的微信测试号信息，开启每日问安服务</p>
+            <p>配置您的微信问安服务，每天自动发送天气和温馨祝福</p>
         </div>
         
         <div class="form-card">
             <form id="configForm">
-                <h2 class="section-title">必填项：微信测试号配置</h2>
-                
+                <h2 class="section-title">基本信息</h2>
                 <div class="form-group">
-                    <label for="userId">小红书商品订单号</label>
+                    <label for="userId">小红书订单/用户ID</label>
                     <input type="text" id="userId" name="user_id" required>
-                    <p class="help-text">请输入您的小红书商品订单号，作为您的唯一标识</p>
+                    <p class="help-text">请输入您在小红书的订单号，用于识别您的配置信息</p>
                 </div>
                 
+                <h2 class="section-title">微信测试号配置</h2>
                 <div class="form-group">
                     <label for="appId">微信测试号AppID</label>
                     <input type="text" id="appId" name="app_id" required>
-                    <p class="help-text">在微信测试号管理页面获取</p>
+                    <p class="help-text">在微信测试号管理页面获取的AppID</p>
                 </div>
                 
                 <div class="form-group">
                     <label for="appSecret">微信测试号AppSecret</label>
                     <input type="text" id="appSecret" name="app_secret" required>
-                    <p class="help-text">在微信测试号管理页面获取</p>
+                    <p class="help-text">在微信测试号管理页面获取的AppSecret</p>
                 </div>
                 
                 <div class="form-group">
                     <label for="templateId">消息模板ID</label>
                     <input type="text" id="templateId" name="template_id" required>
-                    <p class="help-text">在微信测试号管理页面创建模板后获取</p>
+                    <p class="help-text">您在微信测试号创建的模板ID</p>
                 </div>
                 
                 <div class="form-group">
-                    <label for="userOpenid">接收者的OpenID</label>
-                    <input type="text" id="userOpenid" name="user_openid" required>
-                    <p class="help-text">关注测试号后获取的微信用户OpenID</p>
+                    <label for="indicesTemplateId">指数模板ID（选填）</label>
+                    <input type="text" id="indicesTemplateId" name="indices_template_id">
+                    <p class="help-text">如需接收详细的天气指数信息，请创建并填写第二个模板ID</p>
                 </div>
                 
-                <h2 class="section-title">选填项：个性化设置</h2>
+                <div class="form-group">
+                    <label for="openId">接收者的OpenID</label>
+                    <input type="text" id="openId" name="user_openid" required>
+                    <p class="help-text">关注测试号后获得的用户OpenID</p>
+                </div>
                 
+                <h2 class="section-title">个性化设置（选填）</h2>
                 <div class="form-group">
                     <label for="locationName">位置名称</label>
                     <input type="text" id="locationName" name="location_name" placeholder="朝阳区">
-                    <p class="help-text">接收天气信息的地区，例如：朝阳区</p>
+                    <p class="help-text">接收天气的区县名称，如：朝阳区</p>
                 </div>
                 
                 <div class="form-group">
                     <label for="admName">行政区名称</label>
                     <input type="text" id="admName" name="adm_name" placeholder="北京市">
-                    <p class="help-text">接收天气信息的城市，例如：北京市</p>
+                    <p class="help-text">接收天气的城市名称，如：北京市</p>
                 </div>
                 
                 <div class="form-group">
                     <label for="meetDate">相识日期</label>
                     <input type="date" id="meetDate" name="meet_date">
-                    <p class="help-text">用于计算相识天数</p>
+                    <p class="help-text">与伴侣初次相遇的日期</p>
                 </div>
                 
                 <div class="form-group">
-                    <label for="partnerBirthday">伴侣生日</label>
-                    <input type="date" id="partnerBirthday" name="partner_birthday">
-                    <p class="help-text">用于计算距离生日的天数</p>
+                    <label for="birthday">伴侣生日</label>
+                    <input type="date" id="birthday" name="partner_birthday">
+                    <p class="help-text">伴侣的生日，用于计算生日倒计时</p>
+                </div>
+                
+                <div class="form-group">
+                    <label for="xiaozhouBirthday">小周生日</label>
+                    <input type="date" id="xiaozhouBirthday" name="xiazhou_birthday" value="2003-11-13">
+                    <p class="help-text">小周的生日，用于计算生日倒计时</p>
+                </div>
+                
+                <h2 class="section-title">模板格式参考</h2>
+                <div class="template-example">【主模板】
+{{location.DATA}}天气预报
+
+📅 {{date.DATA}}
+🌤️ 天气：{{weather.DATA}}
+🌡️ 气温：{{temperature.DATA}}
+💨 风向：{{wind.DATA}}
+🌅 日出日落：{{sunrise_sunset.DATA}}
+
+💑 {{days_together.DATA}}
+🎂 {{birthday_countdown.DATA}}
+🎉 {{xiaozhou_birthday.DATA}}
+
+💌 {{rainbow1.DATA}}
+💝 {{rainbow2.DATA}}
+💕 {{rainbow3.DATA}}
+
+🌈 {{encouragement.DATA}}
+                </div>
+                
+                <div class="template-example">【指数模板】(可选)
+🏃 运动指数：{{sport_category.DATA}}
+{{sport_text1.DATA}}
+{{sport_text2.DATA}}
+{{sport_text3.DATA}}
+
+👕 穿衣指数：{{clothing_category.DATA}}
+{{clothing_text1.DATA}}
+{{clothing_text2.DATA}}
+{{clothing_text3.DATA}}
+
+☂️ 紫外线指数：{{uv_category.DATA}}
+{{uv_text1.DATA}}
+{{uv_text2.DATA}}
+{{uv_text3.DATA}}
+
+😊 舒适度指数：{{comfort_category.DATA}}
+{{comfort_text1.DATA}}
+{{comfort_text2.DATA}}
+{{comfort_text3.DATA}}
+
+💄 化妆指数：{{makeup_category.DATA}}
+{{makeup_text1.DATA}}
+{{makeup_text2.DATA}}
+{{makeup_text3.DATA}}
                 </div>
                 
                 <button type="submit" class="btn">保存配置</button>
+                
+                <div class="success-message" id="successMessage">
+                    配置保存成功！您的每日问安服务已配置完成。
+                </div>
+                
+                <div class="error-message" id="errorMessage">
+                    配置保存失败，请检查您的输入并重试。
+                </div>
+                
+                <div class="loading-message" id="loadingMessage">
+                    正在保存配置中，请稍候...
+                </div>
             </form>
-            
-            <div class="success-message" id="successMessage">
-                配置保存成功！您的每日问安服务已配置完成。
-            </div>
-            
-            <div class="error-message" id="errorMessage">
-                配置保存失败，请检查您的输入并重试。
-            </div>
-            
-            <div class="loading-message" id="loadingMessage">
-                正在保存配置中，请稍候...
-            </div>
         </div>
         
         <div class="footer">
