@@ -324,20 +324,51 @@
             .then(response => {
                 console.log('Response status:', response.status);
                 console.log('Response headers:', response.headers);
-                return response.text().then(text => {
-                    console.log('Raw response:', text);
-                    try {
-                        return text ? JSON.parse(text) : {};
-                    } catch (e) {
-                        console.error('JSON parse error:', e);
-                        throw new Error('Invalid JSON response');
-                    }
-                });
+                
+                // 先将响应作为文本获取
+                return response.text();
+            })
+            .then(text => {
+                console.log('Raw response:', text);
+                
+                // 如果响应为空，提供友好错误信息
+                if (!text || text.trim() === '') {
+                    throw new Error('服务器返回了空响应');
+                }
+                
+                let data;
+                try {
+                    // 尝试将文本解析为JSON
+                    data = JSON.parse(text);
+                    console.log('Successfully parsed JSON:', data);
+                } catch (e) {
+                    console.error('JSON parse error:', e, 'Raw text:', text);
+                    throw new Error(`无法解析服务器响应: ${text.substring(0, 100)}...`);
+                }
+                
+                // 返回解析后的数据
+                return data;
             })
             .then(data => {
-                console.log('Parsed response data:', data);
+                console.log('Processing response data:', data);
+                
+                // 处理云函数特殊响应格式
+                let result = data;
+                
                 // 检查响应中是否包含body字段（适应云函数的响应格式）
-                const result = data.body ? JSON.parse(data.body) : data;
+                if (data && data.body) {
+                    try {
+                        if (typeof data.body === 'string') {
+                            result = JSON.parse(data.body);
+                        } else {
+                            result = data.body;
+                        }
+                    } catch (e) {
+                        console.error('Error parsing body:', e);
+                        result = { success: false, message: '解析响应体失败' };
+                    }
+                }
+                
                 console.log('Final result:', result);
                 
                 // 恢复按钮状态
