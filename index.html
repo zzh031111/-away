@@ -217,8 +217,20 @@
                 </div>
                 
                 <h2 class="section-title">模板格式参考</h2>
-                <div class="template-example">【主模板】
-{{location.DATA}}天气预报
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h5>模板消息预览</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <!-- 天气主模板示例 -->
+                            <div class="col-md-6">
+                                <div class="card mb-3">
+                                    <div class="card-header bg-primary text-white">
+                                        <h6 class="mb-0">天气主模板示例</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <pre class="template-preview">{{location.DATA}}天气预报
 
 📅 {{date.DATA}}
 🌤️ 天气：{{weather.DATA}}
@@ -226,42 +238,61 @@
 💨 风向：{{wind.DATA}}
 🌅 日出日落：{{sunrise_sunset.DATA}}
 
-💑 {{days_together.DATA}}
-🎂 {{birthday_countdown.DATA}}
-🎉 {{xiaozhou_birthday.DATA}}
+💑 我们已经相爱：{{days_together.DATA}}天
+🎂 你的生日倒数：{{birthday_countdown.DATA}}天
+🎉 我的生日倒数：{{xiaozhou_birthday.DATA}}天
 
-💌 {{rainbow1.DATA}}
+💌 每日情话：{{rainbow1.DATA}}
 💝 {{rainbow2.DATA}}
 💕 {{rainbow3.DATA}}
 
-🌈 {{encouragement.DATA}}
-                </div>
-                
-                <div class="template-example">【指数模板】(可选)
-🏃 运动指数：{{sport_category.DATA}}
-{{sport_text1.DATA}}
-{{sport_text2.DATA}}
-{{sport_text3.DATA}}
+🌈 {{encouragement.DATA}}</pre>
+                                    </div>
+                                </div>
+                            </div>
 
-👕 穿衣指数：{{clothing_category.DATA}}
-{{clothing_text1.DATA}}
-{{clothing_text2.DATA}}
-{{clothing_text3.DATA}}
+                            <!-- 生活指数模板示例 -->
+                            <div class="col-md-6">
+                                <div class="card mb-3">
+                                    <div class="card-header bg-success text-white">
+                                        <h6 class="mb-0">生活指数模板示例</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <pre class="template-preview">每日生活指数速递
 
-☂️ 紫外线指数：{{uv_category.DATA}}
-{{uv_text1.DATA}}
-{{uv_text2.DATA}}
-{{uv_text3.DATA}}
+❄️━━ 运动指数 [{{sport_category.DATA}}] ━━🏃
+▪️ {{sport_text1.DATA}}
+▪️ {{sport_text2.DATA}}
+▪️ {{sport_text3.DATA}}
 
-😊 舒适度指数：{{comfort_category.DATA}}
-{{comfort_text1.DATA}}
-{{comfort_text2.DATA}}
-{{comfort_text3.DATA}}
+👗━━ 穿衣指南 [{{clothing_category.DATA}}] ━━🧥
+▫️ {{clothing_text1.DATA}}
+▫️ {{clothing_text2.DATA}}
+▫️ {{clothing_text3.DATA}}
 
-💄 化妆指数：{{makeup_category.DATA}}
-{{makeup_text1.DATA}}
-{{makeup_text2.DATA}}
-{{makeup_text3.DATA}}
+🕶━━ 紫外线防护 [{{uv_category.DATA}}] ━━🌞
+✦ {{uv_text1.DATA}}
+✦ {{uv_text2.DATA}}
+✦ {{uv_text3.DATA}}
+
+🌬━━ 体感舒适度 [{{comfort_category.DATA}}] ━━🌡
+» {{comfort_text1.DATA}}
+» {{comfort_text2.DATA}}
+» {{comfort_text3.DATA}}
+
+💄━━ 美妆贴士 [{{makeup_category.DATA}}] ━━💋
+☆ {{makeup_text1.DATA}}
+☆ {{makeup_text2.DATA}}
+☆ {{makeup_text3.DATA}}</pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-info mt-3">
+                            <i class="fas fa-info-circle"></i> 提示：您需要在微信公众平台创建两个模板消息，分别用于天气主信息和生活指数信息。请确保变量名与上述模板完全一致。
+                        </div>
+                    </div>
                 </div>
                 
                 <button type="submit" class="btn">保存配置</button>
