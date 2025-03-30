@@ -383,15 +383,30 @@
             setButtonsDisabled(true);
 
             const configData = getFormData();
+            
+            // 添加日志，确认数据
+            console.log("发送测试请求，数据:", configData);
+            
+            // 确保包含必要参数
+            if (!configData.user_openid || !configData.location_name || !configData.adm_name) {
+                errorMessage.textContent = `测试失败：缺少必要参数 (user_openid: ${!!configData.user_openid}, location_name: ${!!configData.location_name}, adm_name: ${!!configData.adm_name})`;
+                errorMessage.style.display = 'block';
+                loadingMessage.style.display = 'none';
+                setButtonsDisabled(false);
+                return;
+            }
 
-            fetch('/api/test-send', {
+            fetch('https://1337331310-kko6t1lktu.ap-beijing.tencentscf.com', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify(configData),
             })
-            .then(handleApiResponse)
+            .then(response => {
+                console.log("收到响应状态:", response.status);
+                return handleApiResponse(response);
+            })
             .then(result => {
                 console.log('Test send result:', result);
                 loadingMessage.style.display = 'none';
@@ -431,7 +446,7 @@
 
             const configData = getFormData();
 
-            fetch('/api/config', {
+            fetch('https://1337331310-2gg2yrldrk.ap-beijing.tencentscf.com/api/config', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
