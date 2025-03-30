@@ -356,7 +356,7 @@
                 console.log('Test send result:', result);
                 loadingMessage.style.display = 'none';
                 if (result.success) {
-                    successMessage.textContent = `${result.message || '测试消息发送成功！请检查微信接收情况。'} 重要提示：请点击"保存配置"按钮，才能保存配置信息，以便日后正常推送！`;
+                    successMessage.textContent = `消息发送成功！ 请确认消息接收对象的微信上是否收到测试消息。重要提示：请点击"保存配置"按钮，才能保存配置信息，以便日后正常推送！`;
                     successMessage.style.display = 'block';
                 } else {
                     errorMessage.textContent = `测试失败：${result.message || '未知错误，请检查后端日志。'}`;
