@@ -1042,81 +1042,118 @@
             });
         });
 
-        // 确认支付按钮点击事件
-        document.getElementById('confirmPaymentButton').addEventListener('click', function() {
-            const selectedOption = document.querySelector('.plan-option.selected');
-            if (!selectedOption) {
-                alert('请选择一个订阅计划');
-                return;
-            }
-            
-            const plan = selectedOption.getAttribute('data-plan');
-            const phone = sessionStorage.getItem('pendingPhone');
-            const password = sessionStorage.getItem('pendingPassword');
-            const config = JSON.parse(sessionStorage.getItem('pendingConfig') || '{}');
-            
-            // 记录选择的计划
-            sessionStorage.setItem('pendingPlan', plan);
-            
-            // 在发送请求前添加回调URL
-            const callbackUrl = window.location.origin + window.location.pathname;
-            console.log("设置支付回调URL:", callbackUrl);
-            
-            // 显示加载状态
-            document.getElementById('paymentInfo').style.display = 'block';
-            document.getElementById('paymentStatus').textContent = '正在创建支付订单...';
-            
-            // 创建支付订单
-            fetch(`${API_BASE_URL}/api/payment/create-order`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    plan: plan,
-                    phone: phone,
-                    password: password,
-                    config: config,
-                    callback_url: callbackUrl
-                })
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`创建支付订单失败 (${response.status})`);
+        // 修改确认支付按钮的处理逻辑
+        confirmPaymentButton.addEventListener('click', async function() {
+            try {
+                const selectedPlan = document.querySelector('.plan-option.selected');
+                if (!selectedPlan) {
+                    document.getElementById('paymentError').style.display = 'block';
+                    document.getElementById('paymentError').textContent = '请选择一个订阅计划';
+                    return;
                 }
-                return response.json();
-            })
-            .then(result => {
+                
+                // 获取选择的计划
+                const plan = selectedPlan.dataset.plan;
+                console.log('已选择计划:', plan);
+                sessionStorage.setItem('pendingPlan', plan);
+                
+                // 获取之前在sessionStorage中保存的配置和用户信息
+                const pendingConfig = JSON.parse(sessionStorage.getItem('pendingConfig') || '{}');
+                const pendingPhone = sessionStorage.getItem('pendingPhone');
+                const pendingPassword = sessionStorage.getItem('pendingPassword');
+                
+                if (!pendingPhone || !pendingPassword || !pendingConfig) {
+                    document.getElementById('paymentError').style.display = 'block';
+                    document.getElementById('paymentError').textContent = '配置信息丢失，请重新开始配置流程';
+                    return;
+                }
+                
+                // 显示加载状态
+                document.getElementById('paymentLoading').style.display = 'block';
+                document.getElementById('planSelection').style.display = 'none';
+                document.getElementById('confirmPaymentButton').disabled = true;
+                
+                // 设置支付回调URL
+                const returnUrl = window.location.origin + '/payment-result';
+                console.log('设置支付回调URL:', returnUrl);
+                
+                // 创建支付订单
+                const response = await fetch(`${API_BASE_URL}/api/payment/create`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        phone: pendingPhone,
+                        password: pendingPassword,
+                        config: pendingConfig,
+                        plan: plan,
+                        return_url: returnUrl
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`创建支付订单失败: ${response.status}`);
+                }
+                
+                const result = await response.json();
                 console.log('创建支付订单结果:', result);
                 
-                if (result.success) {
-                    // 保存订单号
+                if (result.success && result.payment_info) {
+                    // 存储当前订单ID，用于后续查询
                     sessionStorage.setItem('currentOrderId', result.order_id);
                     
-                    // 显示支付二维码或支付链接
-                    const paymentInfo = document.getElementById('paymentInfo');
-                    const qrcodeDiv = document.getElementById('qrcode');
+                    // 显示支付信息
+                    document.getElementById('paymentLoading').style.display = 'none';
+                    document.getElementById('paymentInfo').style.display = 'block';
                     
-                    if (result.qrcode_url) {
-                        // 显示二维码图片
-                        qrcodeDiv.innerHTML = `<img src="${result.qrcode_url}" class="img-fluid" alt="支付二维码">`;
-                        document.getElementById('paymentStatus').textContent = '请使用微信/支付宝扫描上方二维码完成支付';
-                    } else if (result.payment_url) {
-                        // 显示支付按钮
-                        qrcodeDiv.innerHTML = `<a href="${result.payment_url}" target="_blank" class="btn btn-success btn-lg">点击前往支付页面</a>`;
-                        document.getElementById('paymentStatus').textContent = '请点击上方按钮前往支付页面';
+                    // 根据支付信息类型显示支付方式
+                    if (result.payment_info.payment_type === 'qr_code') {
+                        // 显示二维码
+                        document.getElementById('qrCodeContainer').style.display = 'block';
+                        document.getElementById('qrCodeImage').src = result.payment_info.qr_code_url;
+                        document.getElementById('directPayButton').style.display = 'block';
+                        document.getElementById('directPayButton').onclick = function() {
+                            window.open(result.payment_info.qr_code_url, '_blank');
+                        };
+                    } else if (result.payment_info.payment_type === 'form_redirect') {
+                        // 显示表单重定向提示
+                        document.getElementById('formRedirectContainer').style.display = 'block';
+                        // 将HTML表单代码插入到容器中
+                        document.getElementById('formRedirectContent').innerHTML = result.payment_info.redirect_form;
+                        
+                        // 自动触发表单提交
+                        setTimeout(() => {
+                            try {
+                                const form = document.getElementById('formRedirectContent').querySelector('form');
+                                if (form) {
+                                    form.submit();
+                                }
+                            } catch (err) {
+                                console.error('自动提交表单失败:', err);
+                            }
+                        }, 500);
+                    } else {
+                        // 显示支付链接
+                        document.getElementById('paymentLinkContainer').style.display = 'block';
+                        document.getElementById('paymentLink').href = result.payment_info.payment_url;
                     }
                     
-                    // 开始轮询支付状态
+                    // 开始轮询订单状态
                     startPaymentPolling(result.order_id);
+                    
                 } else {
                     throw new Error(result.message || '创建支付订单失败');
                 }
-            })
-            .catch(error => {
+            } catch (error) {
                 console.error('创建支付订单错误:', error);
                 document.getElementById('paymentError').style.display = 'block';
                 document.getElementById('paymentError').textContent = error.message;
                 document.getElementById('paymentInfo').style.display = 'none';
-            });
+                document.getElementById('paymentLoading').style.display = 'none';
+                document.getElementById('planSelection').style.display = 'block';
+                document.getElementById('confirmPaymentButton').disabled = false;
+            }
         });
 
         // 添加支付状态轮询函数
