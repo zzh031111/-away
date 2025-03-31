@@ -3,431 +3,602 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>微信每日问安服务配置</title>
+    <title>微信早安推送配置</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body {
-            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
-            line-height: 1.6;
-            margin: 0;
-            padding: 0;
-            color: #333;
-            background-color: #f5f7fa;
-        }
-        
-        .container {
-            max-width: 800px;
-            margin: 20px auto;
-            padding: 20px;
-            background-color: #fff;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            border-radius: 8px;
-        }
-        
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        
-        h1 {
-            color: #44b549;
-            font-weight: 600;
-        }
-        
-        h2.section-title {
-            color: #333;
-            border-bottom: 2px solid #44b549;
-            padding-bottom: 8px;
-            margin-top: 30px;
-            margin-bottom: 20px;
-            font-size: 1.3em;
-        }
-        
-        .form-card {
-            padding: 0;
-            border: none;
-            box-shadow: none;
-        }
-        
-        .form-group {
-            margin-bottom: 20px;
-        }
-        
-        label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 500;
-            color: #555;
-        }
-        
-        input[type="text"],
-        input[type="date"],
-        input[type="password"],
-        textarea {
-            width: 100%;
-            padding: 10px 12px;
-            border: 1px solid #dcdfe6;
-            border-radius: 4px;
-            box-sizing: border-box;
-            font-size: 1em;
-            transition: border-color 0.2s;
-        }
-        input[type="text"]:focus,
-        input[type="date"]:focus,
-        input[type="password"]:focus,
-        textarea:focus {
-            border-color: #44b549;
-            outline: none;
-        }
-        
-        .help-text {
-            font-size: 0.85em;
-            color: #888;
-            margin-top: 5px;
-        }
-        
-        .button-group {
-            display: flex;
-            gap: 15px;
-            margin-top: 30px;
-        }
-        
-        .button {
-            flex-grow: 1;
-            padding: 12px 20px;
-            border: none;
-            border-radius: 4px;
-            font-size: 1em;
-            font-weight: 500;
-            cursor: pointer;
-            transition: background-color 0.2s, box-shadow 0.2s;
-            text-align: center;
-            color: #fff;
-        }
-        .button:focus {
-            outline: none;
-            box-shadow: 0 0 0 2px rgba(68, 181, 73, 0.3);
-        }
-        
-        .save-button {
-            background-color: #44b549;
-        }
-        .save-button:hover {
-            background-color: #3ca440;
-        }
-        .save-button:disabled {
-            background-color: #a3d9a5;
-            cursor: not-allowed;
-        }
-        
-        .test-button {
-            background-color: #ff9800;
-        }
-        .test-button:hover {
-            background-color: #f57c00;
-        }
-        .test-button:disabled {
-            background-color: #ffe0b2;
-            cursor: not-allowed;
-        }
-        
-        .message-area {
-            margin-top: 15px;
-            padding: 12px;
-            border-radius: 4px;
-            display: none;
-            font-size: 0.95em;
-            border: 1px solid transparent;
-        }
-        .loading {
-            color: #007bff;
-            background-color: #e7f3ff;
-            border-color: #cfe2ff;
-        }
-        .success {
-            color: #198754;
-            background-color: #d1e7dd;
-            border-color: #badbcc;
-        }
-        .error {
-            color: #dc3545;
-            background-color: #f8d7da;
-            border-color: #f5c2c7;
-        }
+        body { padding-top: 20px; background-color: #f8f9fa; }
+        .container { max-width: 700px; background-color: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        .form-label { font-weight: bold; }
+        .alert { margin-top: 20px; }
+        .required::after { content: '*'; color: red; margin-left: 2px; }
+        /* 新增样式 */
+        .auth-section { margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid #eee; }
+        .config-section { display: none; /* 默认隐藏配置区域 */ }
+        .user-status { margin-bottom: 15px; font-style: italic; }
+        .tutorial-link { margin-bottom: 20px; padding: 10px; background-color: #e9f5ff; border: 1px solid #b3d7ff; border-radius: 5px; }
+        .payment-modal-body { /* 支付模态框样式 */ }
+        .plan-option { border: 1px solid #ddd; padding: 15px; margin-bottom: 10px; border-radius: 5px; cursor: pointer; }
+        .plan-option.selected { border-color: #0d6efd; background-color: #e7f1ff; }
+        .plan-option h5 { margin-top: 0; }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <h1>微信每日问安服务配置</h1>
-            <p>配置您的微信问安服务，每天自动发送天气和温馨祝福</p>
+        <h2 class="text-center mb-4">微信早安晚安推送配置</h2>
+
+        <!-- 使用前必看教程 -->
+        <div class="tutorial-link">
+            <strong>重要提示：</strong> 使用前请务必查看 <a href="https://bcn1jsdnj3t6.feishu.cn/wiki/DRsNwylmAiJxVokNmfnczd5XnMa?from=from_copylink" target="_blank" rel="noopener noreferrer">详细使用教程</a>，了解各项配置含义及获取方法！
         </div>
-        
-        <div class="form-card">
+
+        <!-- 认证区域 -->
+        <div class="auth-section">
+            <h4>用户登录/注册</h4>
+            <div class="user-status" id="userStatus">状态：未登录</div>
+            <form id="authForm">
+                <div class="mb-3">
+                    <label for="phone" class="form-label required">手机号</label>
+                    <input type="tel" class="form-control" id="phone" name="phone" required pattern="^1[3-9]\d{9}$" title="请输入有效的11位手机号">
+                </div>
+                <div class="mb-3">
+                    <label for="password" class="form-label required">密码</label>
+                    <input type="password" class="form-control" id="password" name="password" required minlength="6">
+                </div>
+                <button type="button" class="btn btn-primary me-2" id="loginButton">登录</button>
+                <button type="button" class="btn btn-success" id="registerButton">注册并配置</button>
+                <button type="button" class="btn btn-secondary" id="logoutButton" style="display: none;">退出登录</button>
+            </form>
+            <div id="authMessage" class="alert mt-3" style="display: none;"></div>
+        </div>
+
+        <!-- 配置区域 -->
+        <div class="config-section" id="configSection">
+            <h4>详细配置信息</h4>
             <form id="configForm">
-                <h2 class="section-title">基本信息</h2>
-                <div class="form-group">
-                    <label for="userId">小红书订单/用户ID</label>
-                    <input type="text" id="userId" name="user_id" required>
-                    <p class="help-text">请输入您在小红书的订单号或唯一用户标识，用于识别和存储您的配置。</p>
+                <!-- 用户ID (登录后自动填充或隐藏) -->
+                <input type="hidden" id="user_id" name="user_id">
+
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="app_id" class="form-label required">微信公众号AppID</label>
+                        <input type="text" class="form-control" id="app_id" name="app_id" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="app_secret" class="form-label required">微信公众号AppSecret</label>
+                        <input type="password" class="form-control" id="app_secret" name="app_secret" required>
+                    </div>
                 </div>
-                
-                <h2 class="section-title">微信公众号/测试号配置</h2>
-                <div class="form-group">
-                    <label for="appId">AppID</label>
-                    <input type="text" id="appId" name="app_id" required>
-                    <p class="help-text">您的微信公众号或测试号的AppID。</p>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="user_openid" class="form-label required">接收消息用户的OpenID</label>
+                        <input type="text" class="form-control" id="user_openid" name="user_openid" required>
+                    </div>
+                     <div class="col-md-6">
+                        <label for="template_id" class="form-label required">早安模板ID</label>
+                        <input type="text" class="form-control" id="template_id" name="template_id" required>
+                    </div>
                 </div>
-                
-                <div class="form-group">
-                    <label for="appSecret">AppSecret</label>
-                    <input type="text" id="appSecret" name="app_secret" required>
-                    <p class="help-text">您的微信公众号或测试号的AppSecret，请妥善保管。</p>
+                 <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="indices_template_id" class="form-label">晚安模板ID (可选)</label>
+                        <input type="text" class="form-control" id="indices_template_id" name="indices_template_id">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="location_name" class="form-label required">天气查询-区县名</label>
+                        <input type="text" class="form-control" id="location_name" name="location_name" required placeholder="例如: 朝阳区">
+                    </div>
                 </div>
-                
-                <div class="form-group">
-                    <label for="userOpenId">接收者OpenID</label>
-                    <input type="text" id="userOpenId" name="user_openid" required>
-                    <p class="help-text">接收每日问安消息的用户的OpenID（关注公众号后可在测试号管理页面找到）。</p>
+                 <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="adm_name" class="form-label required">天气查询-市/省名</label>
+                        <input type="text" class="form-control" id="adm_name" name="adm_name" required placeholder="例如: 北京市 或 河北省">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="meet_date" class="form-label">相识纪念日 (可选)</label>
+                        <input type="date" class="form-control" id="meet_date" name="meet_date">
+                    </div>
                 </div>
-                
-                <h2 class="section-title">消息模板配置</h2>
-                <div class="form-group">
-                    <label for="templateId">主消息模板ID</label>
-                    <input type="text" id="templateId" name="template_id" required>
-                    <p class="help-text">在微信公众平台申请的模板消息ID（包含天气、日期、纪念日等）。</p>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="partner_birthday" class="form-label">你的生日 (可选)</label>
+                        <input type="date" class="form-control" id="partner_birthday" name="partner_birthday">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="xiazhou_birthday" class="form-label">Ta的生日 (可选)</label>
+                        <input type="date" class="form-control" id="xiazhou_birthday" name="xiazhou_birthday">
+                    </div>
                 </div>
-                
-                <div class="form-group">
-                    <label for="indicesTemplateId">生活指数模板ID (可选)</label>
-                    <input type="text" id="indicesTemplateId" name="indices_template_id">
-                    <p class="help-text">可选。如果您希望单独发送一条生活指数消息，请在此填入对应的模板ID。</p>
-                </div>
-                
-                <h2 class="section-title">地点与纪念日</h2>
-                <div class="form-group">
-                    <label for="locationName">城市名称</label>
-                    <input type="text" id="locationName" name="location_name" placeholder="例如：朝阳区" required>
-                    <p class="help-text">需要查询天气的城市或区县名称。</p>
-                </div>
-                
-                <div class="form-group">
-                    <label for="admName">上级行政区</label>
-                    <input type="text" id="admName" name="adm_name" placeholder="例如：北京市" required>
-                    <p class="help-text">城市所属的省份或直辖市名称。</p>
-                </div>
-                
-                <div class="form-group">
-                    <label for="meetDate">在一起的日期</label>
-                    <input type="date" id="meetDate" name="meet_date">
-                    <p class="help-text">用于计算在一起的天数。</p>
-                </div>
-                
-                <div class="form-group">
-                    <label for="partnerBirthday">Ta的生日</label>
-                    <input type="date" id="partnerBirthday" name="partner_birthday">
-                    <p class="help-text">用于计算对方生日倒计时。</p>
-                </div>
-                
-                <div class="form-group">
-                    <label for="xiazhouBirthday">你的生日</label>
-                    <input type="date" id="xiazhouBirthday" name="xiazhou_birthday">
-                    <p class="help-text">用于计算你的生日倒计时。</p>
-                </div>
-                
-                <div id="loadingMessage" class="message-area loading">正在处理请求，请稍候...</div>
-                <div id="successMessage" class="message-area success"></div>
-                <div id="errorMessage" class="message-area error"></div>
-                
-                <div class="button-group">
-                    <button type="button" id="testSendButton" class="button test-button">测试发送</button>
-                    <button type="submit" id="saveButton" class="button save-button">保存配置</button>
+
+                <div class="d-flex justify-content-end mt-4">
+                    <button type="button" class="btn btn-info me-2" id="testSendButton">测试发送</button>
+                    <button type="button" class="btn btn-primary" id="saveConfigButton">保存配置</button>
                 </div>
             </form>
+            <div id="loadingMessage" class="alert alert-info" style="display: none;"></div>
+            <div id="successMessage" class="alert alert-success" style="display: none;"></div>
+            <div id="errorMessage" class="alert alert-danger" style="display: none;"></div>
         </div>
     </div>
-    
+
+    <!-- 支付模态框 -->
+    <div class="modal fade" id="paymentModal" tabindex="-1" aria-labelledby="paymentModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="paymentModalLabel">选择订阅计划</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body payment-modal-body">
+            <p>首次保存配置或订阅到期后，需要选择一个订阅计划以继续使用服务。</p>
+            <div class="plan-option" data-plan="monthly">
+              <h5>月度会员</h5>
+              <p>价格：24.9元/月</p>
+            </div>
+            <div class="plan-option" data-plan="annual">
+              <h5>年度会员</h5>
+              <p>价格：29.9元/年 (推荐)</p>
+            </div>
+            <div id="paymentInfo" class="mt-3" style="display: none;">
+                <!-- 这里将显示支付二维码或跳转按钮 -->
+                <p>请使用微信/支付宝扫描下方二维码完成支付：</p>
+                <div id="qrcode"></div>
+                <p id="paymentStatus">等待支付结果...</p>
+            </div>
+            <div id="paymentError" class="alert alert-danger mt-3" style="display: none;"></div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+            <button type="button" class="btn btn-primary" id="confirmPaymentButton" disabled>确认支付</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script> <!-- 用于生成二维码 -->
     <script>
+        const authForm = document.getElementById('authForm');
         const configForm = document.getElementById('configForm');
+        const loginButton = document.getElementById('loginButton');
+        const registerButton = document.getElementById('registerButton');
+        const logoutButton = document.getElementById('logoutButton');
+        const saveConfigButton = document.getElementById('saveConfigButton');
         const testSendButton = document.getElementById('testSendButton');
-        const saveButton = document.getElementById('saveButton');
+        const authMessage = document.getElementById('authMessage');
         const loadingMessage = document.getElementById('loadingMessage');
         const successMessage = document.getElementById('successMessage');
         const errorMessage = document.getElementById('errorMessage');
+        const configSection = document.getElementById('configSection');
+        const userStatus = document.getElementById('userStatus');
+        const paymentModalElement = document.getElementById('paymentModal');
+        const paymentModal = new bootstrap.Modal(paymentModalElement);
+        const paymentInfo = document.getElementById('paymentInfo');
+        const qrcodeContainer = document.getElementById('qrcode');
+        const paymentStatus = document.getElementById('paymentStatus');
+        const paymentError = document.getElementById('paymentError');
+        const confirmPaymentButton = document.getElementById('confirmPaymentButton');
+
+        // API 端点 (根据您的实际部署修改)
+        const API_BASE_URL = 'https://1337331310-2gg2yrldrk.ap-beijing.tencentscf.com'; // wx_config_api 的 URL
+        const MORNING_GREETING_URL = 'https://1337331310-kko6t1lktu.ap-beijing.tencentscf.com'; // morning_greeting 的 URL
+
+        let currentPlan = null; // 当前选择的支付计划
+        let currentOrderId = null; // 当前支付订单号
+        let paymentPollInterval = null; // 支付状态轮询定时器
+        let authToken = localStorage.getItem('authToken'); // 从本地存储读取Token
+        let loggedInUser = localStorage.getItem('loggedInUser'); // 登录的手机号
+
+        // --- 辅助函数 ---
+        function showMessage(element, message, isSuccess) {
+            element.textContent = message;
+            element.className = `alert ${isSuccess ? 'alert-success' : 'alert-danger'}`;
+            element.style.display = 'block';
+        }
 
         function clearMessages() {
+            authMessage.style.display = 'none';
             loadingMessage.style.display = 'none';
             successMessage.style.display = 'none';
             errorMessage.style.display = 'none';
-            successMessage.textContent = '';
-            errorMessage.textContent = '';
+            paymentError.style.display = 'none';
         }
 
-        function setButtonsDisabled(disabled) {
+        function setConfigFormDisabled(disabled) {
+            Array.from(configForm.elements).forEach(el => el.disabled = disabled);
             testSendButton.disabled = disabled;
-            saveButton.disabled = disabled;
+            saveConfigButton.disabled = disabled;
         }
 
-        function getFormData() {
-            const formData = new FormData(configForm);
-            const configData = {};
+        function setAuthFormDisabled(disabled) {
+             Array.from(authForm.elements).forEach(el => el.disabled = disabled);
+             loginButton.disabled = disabled;
+             registerButton.disabled = disabled;
+        }
+
+        function updateLoginStatus() {
+            if (authToken && loggedInUser) {
+                userStatus.textContent = `状态：已登录 (${loggedInUser})`;
+                loginButton.style.display = 'none';
+                registerButton.style.display = 'none';
+                logoutButton.style.display = 'inline-block';
+                configSection.style.display = 'block';
+                // 登录后自动加载配置
+                loadUserConfig();
+            } else {
+                userStatus.textContent = '状态：未登录';
+                loginButton.style.display = 'inline-block';
+                registerButton.style.display = 'inline-block';
+                logoutButton.style.display = 'none';
+                configSection.style.display = 'none';
+                configForm.reset(); // 清空表单
+            }
+        }
+
+        function getFormData(formElement) {
+            const formData = new FormData(formElement);
+            const data = {};
             formData.forEach((value, key) => {
-                if (configForm.elements[key] && configForm.elements[key].type === 'date' && !value) {
-                } else {
-                    configData[key] = value.trim();
-                }
+                // 可以在这里添加trim等处理
+                data[key] = value;
             });
-            ['user_id', 'app_id', 'app_secret', 'template_id', 'user_openid', 'location_name', 'adm_name'].forEach(field => {
-                if (!(field in configData)) {
-                    configData[field] = '';
-                }
-            });
-            return configData;
+            return data;
         }
 
-        async function handleApiResponse(response) {
-            let result = { success: false, message: '未知错误' };
-            const contentType = response.headers.get("content-type");
+        // --- API 调用 ---
+        async function apiCall(endpoint, method = 'GET', data = null, requiresAuth = false) {
+            const url = `${API_BASE_URL}${endpoint}`;
+            const headers = { 'Content-Type': 'application/json' };
+            if (requiresAuth && authToken) {
+                headers['Authorization'] = `Bearer ${authToken}`;
+            }
+
+            const options = {
+                method: method,
+                headers: headers,
+            };
+            if (data) {
+                options.body = JSON.stringify(data);
+            }
 
             try {
-                if (contentType && contentType.includes("application/json")) {
-                    const data = await response.json();
-                    result.success = data.success === true;
-                    result.message = data.message || (result.success ? '操作成功' : '发生未知错误');
-                } else {
-                    const text = await response.text();
-                    result.message = `服务器返回了非预期的格式 (${contentType || '无 Content-Type'}): ${text.substring(0, 200)}`;
-                    console.warn('Received non-JSON response:', response.status, text);
+                const response = await fetch(url, options);
+                if (response.status === 401) { // Token失效或未授权
+                    logout();
+                    showMessage(authMessage, '登录已过期或无效，请重新登录。', false);
+                    throw new Error('Unauthorized');
                 }
-            } catch (e) {
-                console.error('Error parsing response:', e);
-                result.message = `解析服务器响应失败: ${e.message}`;
-            }
-
-            if (!response.ok) {
-                result.success = false;
-                if (result.message === '未知错误' || result.message === '操作成功') {
-                     result.message = `请求失败，状态码：${response.status}。${result.message}`;
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ message: `HTTP error! status: ${response.status}` }));
+                    throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
                 }
-                 console.error('API request failed:', response.status, result.message);
+                // 处理 204 No Content
+                 if (response.status === 204) {
+                    return { success: true, message: '操作成功完成。' }; // 或者返回 null/undefined
+                }
+                return await response.json();
+            } catch (error) {
+                console.error('API Call Error:', error);
+                throw error; // 将错误继续抛出，以便调用者处理
             }
-
-            return result;
         }
 
-        testSendButton.addEventListener('click', () => {
+        // --- 事件处理 ---
+        loginButton.addEventListener('click', async () => {
+            clearMessages();
+            const phoneInput = document.getElementById('phone');
+            const passwordInput = document.getElementById('password');
+
+            if (!phoneInput.checkValidity() || !passwordInput.checkValidity()) {
+                 showMessage(authMessage, '请输入有效的手机号和密码（至少6位）。', false);
+                 authForm.reportValidity(); // 触发浏览器默认验证提示
+                 return;
+            }
+
+            setAuthFormDisabled(true);
+            try {
+                const data = getFormData(authForm);
+                const result = await apiCall('/api/login', 'POST', data);
+                if (result.success && result.token) {
+                    authToken = result.token;
+                    loggedInUser = data.phone;
+                    localStorage.setItem('authToken', authToken);
+                    localStorage.setItem('loggedInUser', loggedInUser);
+                    showMessage(authMessage, '登录成功！正在加载配置...', true);
+                    updateLoginStatus();
+                } else {
+                    showMessage(authMessage, result.message || '登录失败，请检查手机号或密码。', false);
+                }
+            } catch (error) {
+                showMessage(authMessage, `登录时出错: ${error.message}`, false);
+            } finally {
+                setAuthFormDisabled(false);
+            }
+        });
+
+        registerButton.addEventListener('click', () => {
+            clearMessages();
+            const phoneInput = document.getElementById('phone');
+            const passwordInput = document.getElementById('password');
+
+            if (!phoneInput.checkValidity() || !passwordInput.checkValidity()) {
+                 showMessage(authMessage, '请输入有效的手机号和密码（至少6位）以进行注册。', false);
+                 authForm.reportValidity();
+                 return;
+            }
+            // 允许进入配置阶段，保存时再处理注册逻辑
+            loggedInUser = phoneInput.value; // 暂存手机号
+            authToken = null; // 清除可能存在的旧token
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('loggedInUser');
+            userStatus.textContent = `状态：准备注册 (${loggedInUser})`;
+            configSection.style.display = 'block';
+            configForm.reset(); // 清空可能存在的旧配置
+            showMessage(authMessage, '请填写下面的配置信息，点击"保存配置"时将完成注册和支付。', true);
+            loginButton.style.display = 'none';
+            registerButton.style.display = 'none';
+            logoutButton.style.display = 'none'; // 注册过程中不显示退出
+        });
+
+        logoutButton.addEventListener('click', () => {
+            logout();
+            showMessage(authMessage, '已退出登录。', true);
+        });
+
+        function logout() {
+            authToken = null;
+            loggedInUser = null;
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('loggedInUser');
+            updateLoginStatus();
+        }
+
+        // 加载用户配置
+        async function loadUserConfig() {
+            if (!authToken) return;
+            setConfigFormDisabled(true);
+            try {
+                const result = await apiCall('/api/config/get', 'GET', null, true);
+                if (result.success && result.config) {
+                    // 填充表单
+                    for (const key in result.config) {
+                        if (configForm.elements[key]) {
+                            configForm.elements[key].value = result.config[key];
+                        }
+                    }
+                    // 可以在这里显示用户的订阅状态 result.subscription_status
+                    showMessage(successMessage, '配置加载成功。', true);
+                } else {
+                    showMessage(errorMessage, result.message || '加载配置失败。', false);
+                     // 如果是新用户或配置丢失，不清空表单，允许用户填写
+                }
+            } catch (error) {
+                 showMessage(errorMessage, `加载配置时出错: ${error.message}`, false);
+                 // 出错时不清空表单，允许用户填写
+            } finally {
+                 setConfigFormDisabled(false);
+            }
+        }
+
+        // 测试发送
+        testSendButton.addEventListener('click', async () => {
             clearMessages();
             if (!configForm.checkValidity()) {
-                errorMessage.textContent = '请填写所有必填项后再测试。';
-                errorMessage.style.display = 'block';
+                showMessage(errorMessage, '请填写所有必填项后再测试。', false);
                 configForm.reportValidity();
                 return;
             }
-
+            setConfigFormDisabled(true);
             loadingMessage.textContent = '正在发送测试消息，请稍候...';
             loadingMessage.style.display = 'block';
-            setButtonsDisabled(true);
 
-            const configData = getFormData();
-            
-            // 添加日志，确认数据
-            console.log("发送测试请求，数据:", configData);
-            
-            // 确保包含必要参数
-            if (!configData.user_openid || !configData.location_name || !configData.adm_name) {
-                errorMessage.textContent = `测试失败：缺少必要参数 (user_openid: ${!!configData.user_openid}, location_name: ${!!configData.location_name}, adm_name: ${!!configData.adm_name})`;
-                errorMessage.style.display = 'block';
-                loadingMessage.style.display = 'none';
-                setButtonsDisabled(false);
-                return;
+            const configData = getFormData(configForm);
+            // 测试发送直接调用 morning_greeting 函数
+            try {
+                const response = await fetch(MORNING_GREETING_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(configData),
+                });
+                const result = await response.json();
+                 console.log('Test send result:', result);
+                 loadingMessage.style.display = 'none';
+                 if (result.success) {
+                     successMessage.textContent = `消息发送成功！ 请确认消息接收对象的微信上是否收到测试消息。重要提示：请点击"保存配置"按钮，才能保存配置信息，以便日后正常推送！`;
+                     successMessage.style.display = 'block';
+                 } else {
+                     errorMessage.textContent = `测试失败：${result.message || '未知错误，请检查后端日志。'}`;
+                     errorMessage.style.display = 'block';
+                 }
+            } catch (error) {
+                 console.error('Test send fetch error:', error);
+                 loadingMessage.style.display = 'none';
+                 errorMessage.textContent = `测试请求失败：${error.message}`;
+                 errorMessage.style.display = 'block';
+            } finally {
+                 setConfigFormDisabled(false);
             }
-
-            fetch('https://1337331310-kko6t1lktu.ap-beijing.tencentscf.com', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(configData),
-            })
-            .then(response => {
-                console.log("收到响应状态:", response.status);
-                return handleApiResponse(response);
-            })
-            .then(result => {
-                console.log('Test send result:', result);
-                loadingMessage.style.display = 'none';
-                if (result.success) {
-                    successMessage.textContent = `消息发送成功！ 请确认消息接收对象的微信上是否收到测试消息。重要提示：请点击"保存配置"按钮，才能保存配置信息，以便日后正常推送！`;
-                    successMessage.style.display = 'block';
-                } else {
-                    errorMessage.textContent = `测试失败：${result.message || '未知错误，请检查后端日志。'}`;
-                    errorMessage.style.display = 'block';
-                }
-            })
-            .catch(error => {
-                console.error('Test send fetch error:', error);
-                loadingMessage.style.display = 'none';
-                errorMessage.textContent = `测试请求失败：${error.message}`;
-                errorMessage.style.display = 'block';
-            })
-            .finally(() => {
-                setButtonsDisabled(false);
-            });
         });
 
-        configForm.addEventListener('submit', (event) => {
-            event.preventDefault();
+        // 保存配置按钮点击
+        saveConfigButton.addEventListener('click', () => {
             clearMessages();
-
             if (!configForm.checkValidity()) {
-                errorMessage.textContent = '请填写所有必填项后再保存。';
-                errorMessage.style.display = 'block';
+                showMessage(errorMessage, '请填写所有必填项后再保存。', false);
                 configForm.reportValidity();
                 return;
             }
 
-            loadingMessage.textContent = '正在保存配置，请稍候...';
-            loadingMessage.style.display = 'block';
-            setButtonsDisabled(true);
+            // 弹出支付模态框
+            currentPlan = null; // 重置选择
+            currentOrderId = null;
+            stopPaymentPolling(); // 停止之前的轮询
+            document.querySelectorAll('.plan-option').forEach(el => el.classList.remove('selected'));
+            paymentInfo.style.display = 'none';
+            qrcodeContainer.innerHTML = ''; // 清空二维码
+            confirmPaymentButton.disabled = true;
+            paymentModal.show();
+        });
 
-            const configData = getFormData();
-
-            fetch('https://1337331310-2gg2yrldrk.ap-beijing.tencentscf.com/api/config', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(configData),
-            })
-            .then(handleApiResponse)
-            .then(result => {
-                console.log('Save config result:', result);
-                loadingMessage.style.display = 'none';
-                if (result.success) {
-                    successMessage.textContent = result.message || '配置保存成功！';
-                    successMessage.style.display = 'block';
-
-                    const userId = document.getElementById('userId').value;
-                    configForm.reset();
-                    document.getElementById('userId').value = userId;
-
-                    setTimeout(() => {
-                        successMessage.style.display = 'none';
-                    }, 3000);
-                } else {
-                    errorMessage.textContent = `保存失败：${result.message || '未知错误，请检查后端日志。'}`;
-                    errorMessage.style.display = 'block';
-                }
-            })
-            .catch(error => {
-                console.error('Save config fetch error:', error);
-                loadingMessage.style.display = 'none';
-                errorMessage.textContent = `保存请求失败：${error.message}`;
-                errorMessage.style.display = 'block';
-            })
-            .finally(() => {
-                setButtonsDisabled(false);
+        // 选择支付计划
+        document.querySelectorAll('.plan-option').forEach(el => {
+            el.addEventListener('click', () => {
+                document.querySelectorAll('.plan-option').forEach(el => el.classList.remove('selected'));
+                el.classList.add('selected');
+                currentPlan = el.getAttribute('data-plan');
+                confirmPaymentButton.disabled = false; // 启用确认支付按钮
+                paymentInfo.style.display = 'none'; // 隐藏旧的支付信息
+                paymentError.style.display = 'none';
+                stopPaymentPolling();
             });
         });
+
+        // 确认支付按钮点击
+        confirmPaymentButton.addEventListener('click', async () => {
+            if (!currentPlan) {
+                paymentError.textContent = '请先选择一个订阅计划。';
+                paymentError.style.display = 'block';
+                return;
+            }
+            paymentError.style.display = 'none';
+            confirmPaymentButton.disabled = true; // 防止重复点击
+            confirmPaymentButton.textContent = '正在创建订单...';
+
+            try {
+                // 准备要保存的数据
+                const configData = getFormData(configForm);
+                const phone = document.getElementById('phone').value; // 获取认证表单的手机号
+                const password = document.getElementById('password').value; // 获取认证表单的密码
+
+                // 如果是注册流程，需要包含手机和密码
+                const saveData = {
+                    plan: currentPlan,
+                    config: configData,
+                    phone: phone, // 始终传递手机号
+                    password: password // 传递密码用于注册或验证（后端决定如何使用）
+                };
+
+                // 调用后端创建支付订单接口
+                const result = await apiCall('/api/payment/create-order', 'POST', saveData, !!authToken); // 如果有token则传递
+
+                if (result.success && result.payment_info) {
+                    currentOrderId = result.order_id;
+                    paymentInfo.style.display = 'block';
+                    qrcodeContainer.innerHTML = ''; // 清空旧二维码
+
+                    // --- 这里需要根据支付服务商返回的信息展示支付方式 ---
+                    if (result.payment_info.qr_code_url) {
+                        new QRCode(qrcodeContainer, {
+                            text: result.payment_info.qr_code_url,
+                            width: 128,
+                            height: 128,
+                        });
+                        paymentStatus.textContent = '请使用微信/支付宝扫描二维码支付...';
+                    } else if (result.payment_info.redirect_url) {
+                        // 如果是跳转链接
+                        paymentStatus.innerHTML = `<a href="${result.payment_info.redirect_url}" target="_blank" class="btn btn-success">点击跳转到支付页面</a>`;
+                    } else {
+                         paymentStatus.textContent = '无法生成支付信息，请联系管理员。';
+                    }
+                    // --- 支付方式展示结束 ---
+
+                    // 开始轮询支付状态
+                    startPaymentPolling(currentOrderId);
+
+                } else {
+                    paymentError.textContent = result.message || '创建支付订单失败。';
+                    paymentError.style.display = 'block';
+                }
+
+            } catch (error) {
+                paymentError.textContent = `创建订单时出错: ${error.message}`;
+                paymentError.style.display = 'block';
+            } finally {
+                 confirmPaymentButton.disabled = false;
+                 confirmPaymentButton.textContent = '确认支付';
+            }
+        });
+
+        // 开始轮询支付状态
+        function startPaymentPolling(orderId) {
+            stopPaymentPolling(); // 先停止旧的轮询
+            paymentStatus.textContent = '正在查询支付状态...';
+            let pollCount = 0;
+            const maxPolls = 60; // 最多轮询约5分钟 (60 * 5秒)
+
+            paymentPollInterval = setInterval(async () => {
+                pollCount++;
+                if (pollCount > maxPolls) {
+                    stopPaymentPolling();
+                    paymentStatus.textContent = '查询超时，请稍后在页面查看或联系客服。';
+                    return;
+                }
+
+                try {
+                    // 调用后端查询订单状态接口
+                    const result = await apiCall(`/api/payment/status/${orderId}`, 'GET', null, !!authToken); // 可能需要认证
+
+                    if (result.success && result.paid) {
+                        stopPaymentPolling();
+                        paymentStatus.textContent = '支付成功！配置已保存。';
+                        paymentInfo.style.display = 'none'; // 隐藏支付信息
+                        showMessage(successMessage, '支付成功！配置已成功保存。', true);
+                        paymentModal.hide(); // 关闭模态框
+                        // 如果是注册流程，需要模拟登录
+                        if (!authToken) {
+                            // 支付成功后后端应该已经完成了注册，尝试自动登录
+                            const phone = document.getElementById('phone').value;
+                            const password = document.getElementById('password').value;
+                            // 延迟一点时间让后端处理完成
+                            setTimeout(async () => {
+                                try {
+                                    const loginResult = await apiCall('/api/login', 'POST', { phone, password });
+                                    if (loginResult.success && loginResult.token) {
+                                        authToken = loginResult.token;
+                                        loggedInUser = phone;
+                                        localStorage.setItem('authToken', authToken);
+                                        localStorage.setItem('loggedInUser', loggedInUser);
+                                        updateLoginStatus(); // 更新状态并加载配置
+                                    } else {
+                                         showMessage(authMessage, '注册成功，但自动登录失败，请手动登录。', false);
+                                    }
+                                } catch (loginError) {
+                                     showMessage(authMessage, '注册成功，但自动登录出错，请手动登录。', false);
+                                }
+                            }, 1500);
+                        } else {
+                            // 如果是已登录用户续费/更新，可能需要重新加载配置或状态
+                            loadUserConfig();
+                        }
+                    } else if (result.success && !result.paid) {
+                        paymentStatus.textContent = `等待支付... (查询次数: ${pollCount})`;
+                    } else {
+                        // 查询失败，但不停止轮询，给用户重试机会
+                        paymentStatus.textContent = `查询支付状态失败: ${result.message || '未知错误'} (查询次数: ${pollCount})`;
+                    }
+                } catch (error) {
+                    paymentStatus.textContent = `查询支付状态出错: ${error.message} (查询次数: ${pollCount})`;
+                    // 网络错误等也暂时不停止轮询
+                }
+            }, 5000); // 每5秒查询一次
+        }
+
+        // 停止轮询
+        function stopPaymentPolling() {
+            if (paymentPollInterval) {
+                clearInterval(paymentPollInterval);
+                paymentPollInterval = null;
+            }
+        }
+
+        // 模态框关闭时停止轮询
+        paymentModalElement.addEventListener('hidden.bs.modal', () => {
+            stopPaymentPolling();
+        });
+
+
+        // --- 初始化 ---
+        updateLoginStatus(); // 页面加载时检查登录状态
+
     </script>
 </body>
 </html> 
