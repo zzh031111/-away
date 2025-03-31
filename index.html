@@ -193,12 +193,17 @@
             <p>首次保存配置或订阅到期后，需要选择一个订阅计划以继续使用服务。</p>
             <div class="plan-option" data-plan="monthly">
               <h5>月度会员</h5>
-              <p>价格：24.9元/月</p>
+              <p>价格：<strong>24.9元/月</strong></p>
             </div>
             <div class="plan-option" data-plan="annual">
               <h5>年度会员</h5>
-              <p>价格：29.9元/年 (推荐)</p>
+              <p>价格：<strong>29.9元/年</strong> (推荐)</p>
             </div>
+            <div class="plan-option" data-plan="permanent">
+              <h5>永久会员</h5>
+              <p>价格：<strong>99.9元</strong> (一次付费，永久使用)</p>
+            </div>
+            <div class="text-muted small mt-2" id="priceUpdateInfo">价格更新时间: 2024年3月</div>
             <div id="paymentInfo" class="mt-3" style="display: none;">
                 <!-- 这里将显示支付二维码或跳转按钮 -->
                 <p>请使用微信/支付宝扫描下方二维码完成支付：</p>
@@ -214,6 +219,11 @@
         </div>
       </div>
     </div>
+    
+    <!-- 添加到页面底部 - 客服联系信息 -->
+    <footer class="mt-5 pt-4 border-top text-center text-muted">
+        <p class="small">如有任何问题，请联系客服：微信：perrt_u</p>
+    </footer>
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script> <!-- 用于生成二维码 -->
@@ -248,6 +258,13 @@
         let paymentPollInterval = null; // 支付状态轮询定时器
         let authToken = localStorage.getItem('authToken'); // 从本地存储读取Token
         let loggedInUser = localStorage.getItem('loggedInUser'); // 登录的手机号
+
+        // 全局价格存储变量
+        let planPrices = {
+            monthly: 24.9,  // 默认价格，将被API覆盖
+            annual: 29.9,
+            permanent: 99.9
+        };
 
         // --- 辅助函数 ---
         function showMessage(element, message, isSuccess) {
@@ -600,17 +617,27 @@
                 console.log('测试发送结果:', result);
                 
                 if (result.success) {
-                    showDetailedMessage(
-                        successMessage, 
-                        '测试消息发送成功！', 
-                        `<strong class="d-block mb-2" style="font-size: 1.1rem; color: #155724;">请确认您的微信是否收到测试消息。</strong>
-                         <div class="p-3 mb-2 bg-light border rounded">
-                             <strong class="d-block mb-1" style="color: #721c24;">下一步重要操作：</strong>
-                             测试成功后，请点击"保存配置"按钮并完成订阅，才能保存配置信息用于日常推送。
-                             <br>未订阅的配置无法保存，也不会自动推送消息。
-                         </div>`, 
-                        'success'
-                    );
+                    // 判断用户是否已登录
+                    const isLoggedIn = !!localStorage.getItem('loggedInUser');
+                    
+                    let successText = `<strong class="d-block mb-2" style="font-size: 1.1rem; color: #155724;">请确认您的微信是否收到测试消息。</strong>`;
+                    
+                    if (isLoggedIn) {
+                        // 已登录用户可以直接保存
+                        successText += `<div class="p-3 mb-2 bg-light border rounded">
+                            <strong class="d-block mb-1" style="color: #721c24;">下一步操作：</strong>
+                            测试成功后，请点击"保存配置"按钮保存您的更新。您的配置将立即生效。
+                        </div>`;
+                    } else {
+                        // 新用户需要付款注册
+                        successText += `<div class="p-3 mb-2 bg-light border rounded">
+                            <strong class="d-block mb-1" style="color: #721c24;">下一步操作：</strong>
+                            测试成功后，请点击"保存配置"按钮完成注册。首次配置需要付款，付款成功后您的账号将自动注册。
+                            <br>注册成功后，您可以随时使用手机号和密码登录并修改配置。
+                        </div>`;
+                    }
+                    
+                    showDetailedMessage(successMessage, '测试消息发送成功！', successText, 'success');
                 } else {
                     let errorDetails = result.message || '未知错误';
                     
@@ -718,57 +745,59 @@
                             showDetailedMessage(loadingMessage, "支付成功", "正在保存您的配置信息...", 'info');
                             
                             // 调用保存配置的API
-                            return fetch(`${API_BASE_URL}/api/config/save`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                    phone: pendingPhone.trim(),
-                                    password: pendingPassword.trim(),
-                                    config: config,  // config应该已经在之前的步骤中trim过了
-                                    order_id: orderId.trim()
+                            saveConfigAfterPayment(pendingPhone, pendingPassword, config, orderId)
+                                .then(saveResult => {
+                                    console.log("配置保存结果:", saveResult);
+                                    
+                                    if (saveResult.success) {
+                                        showDetailedMessage(
+                                            successMessage, 
+                                            "配置保存成功！", 
+                                            `您的订阅已激活，系统将按照配置在每天早晨为您推送消息。<br><br>订单号: ${orderId}<br>手机号: ${pendingPhone}<br><br>您可以随时登录修改配置信息。`, 
+                                            'success'
+                                        );
+                                        
+                                        // 清理会话存储
+                                        sessionStorage.removeItem('pendingConfig');
+                                        sessionStorage.removeItem('pendingPhone');
+                                        sessionStorage.removeItem('pendingPassword');
+                                        sessionStorage.removeItem('pendingPlan');
+                                        sessionStorage.removeItem('currentOrderId');
+                                        
+                                        // 更新URL以移除支付参数
+                                        window.history.replaceState({}, document.title, window.location.pathname);
+                                        
+                                        // 自动更新登录状态和加载配置 (如果需要)
+                                        if (!authToken || !loggedInUser) {
+                                            // 可能需要自动登录用户
+                                            localStorage.setItem('loggedInUser', pendingPhone);
+                                            updateLoginStatus();
+                                        }
+                                    } else {
+                                        throw new Error(saveResult.message || "配置保存失败，请联系客服处理。");
+                                    }
                                 })
-                            });
+                                .catch(error => {
+                                    console.error("处理支付回调时出错:", error);
+                                    showDetailedMessage(
+                                        errorMessage, 
+                                        "支付处理出错", 
+                                        handleApiError(error, "处理支付结果时"), 
+                                        'error'
+                                    );
+                                    
+                                    // 提供重试选项
+                                    setTimeout(() => {
+                                        if (confirm("是否尝试重新验证支付状态并保存配置？")) {
+                                            // 重试逻辑
+                                            checkForPaymentCallback();
+                                        }
+                                    }, 5000);  // 给用户5秒时间阅读错误信息
+                                });
                         } else if (result.success && !result.paid) {
                             throw new Error("支付尚未完成。如果您已经付款，请稍后刷新页面，或联系客服处理。");
                         } else {
                             throw new Error(result.message || "支付验证失败，请联系客服处理。");
-                        }
-                    })
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error(`配置保存请求失败 (${response.status})`);
-                        }
-                        return response.json();
-                    })
-                    .then(saveResult => {
-                        console.log("配置保存结果:", saveResult);
-                        
-                        if (saveResult.success) {
-                            showDetailedMessage(
-                                successMessage, 
-                                "配置保存成功！", 
-                                `您的订阅已激活，系统将按照配置在每天早晨为您推送消息。<br><br>订单号: ${orderId}<br>手机号: ${pendingPhone}<br><br>您可以随时登录修改配置信息。`, 
-                                'success'
-                            );
-                            
-                            // 清理会话存储
-                            sessionStorage.removeItem('pendingConfig');
-                            sessionStorage.removeItem('pendingPhone');
-                            sessionStorage.removeItem('pendingPassword');
-                            sessionStorage.removeItem('pendingPlan');
-                            sessionStorage.removeItem('currentOrderId');
-                            
-                            // 更新URL以移除支付参数
-                            window.history.replaceState({}, document.title, window.location.pathname);
-                            
-                            // 自动更新登录状态和加载配置 (如果需要)
-                            if (!authToken || !loggedInUser) {
-                                // 可能需要自动登录用户
-                                localStorage.setItem('loggedInUser', pendingPhone);
-                                updateLoginStatus();
-                            }
-                        } else {
-                            throw new Error(saveResult.message || "配置保存失败，请联系客服处理。");
                         }
                     })
                     .catch(error => {
@@ -790,6 +819,121 @@
                     });
             }
         }
+
+        // 确保支付回调函数正确存储用户信息
+        // 在支付成功并准备保存配置数据时修改
+        function saveConfigAfterPayment(phone, password, config, orderId) {
+            return fetch(`${API_BASE_URL}/api/config/save`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    phone: phone.trim(),  // 手机号作为user_id
+                    password: password.trim(),  // 密码作为user_secret
+                    config: config,
+                    order_id: orderId.trim()
+                })
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    // 保存成功，设置本地登录状态
+                    localStorage.setItem('loggedInUser', phone);
+                    localStorage.setItem('authToken', result.token || '');  // 如果后端返回token
+                    
+                    console.log('用户已注册并登录:', phone);
+                    updateLoginStatus();  // 更新UI显示
+                    
+                    return { success: true, message: '配置已保存，您的账号已成功注册' };
+                } else {
+                    return { success: false, message: result.message || '保存失败' };
+                }
+            });
+        }
+
+        // 获取最新价格信息
+        async function fetchPlanPrices() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/payment/prices`);
+                if (!response.ok) {
+                    throw new Error(`获取价格信息失败 (${response.status})`);
+                }
+                
+                const result = await response.json();
+                if (result.success) {
+                    planPrices = result.data;
+                    console.log("最新价格信息:", planPrices);
+                    
+                    // 更新界面上的价格显示
+                    updatePriceDisplay();
+                } else {
+                    console.warn("获取价格失败:", result.message);
+                }
+            } catch (error) {
+                console.error("获取价格错误:", error);
+            }
+        }
+
+        // 更新界面上的价格显示
+        function updatePriceDisplay() {
+            // 月度价格
+            const monthlyOption = document.querySelector('.plan-option[data-plan="monthly"]');
+            if (monthlyOption) {
+                monthlyOption.querySelector('p').innerHTML = `
+                    价格：<strong>${planPrices.monthly}元/月</strong>
+                    ${planPrices.discount ? `<span class="badge bg-danger ms-2">${planPrices.discount}</span>` : ''}
+                `;
+            }
+            
+            // 年度价格
+            const annualOption = document.querySelector('.plan-option[data-plan="annual"]');
+            if (annualOption) {
+                annualOption.querySelector('p').innerHTML = `
+                    价格：<strong>${planPrices.annual}元/年</strong> (推荐)
+                    ${planPrices.discount ? `<span class="badge bg-danger ms-2">${planPrices.discount}</span>` : ''}
+                `;
+            }
+            
+            // 如果有永久会员选项
+            const permanentOption = document.querySelector('.plan-option[data-plan="permanent"]');
+            if (permanentOption) {
+                permanentOption.querySelector('p').innerHTML = `
+                    价格：<strong>${planPrices.permanent}元</strong> (一次付费，永久使用)
+                    ${planPrices.discount ? `<span class="badge bg-danger ms-2">${planPrices.discount}</span>` : ''}
+                `;
+            }
+            
+            // 更新价格更新时间
+            if (planPrices.update_time) {
+                const priceUpdateInfo = document.getElementById('priceUpdateInfo');
+                if (priceUpdateInfo) {
+                    priceUpdateInfo.textContent = `价格更新时间: ${planPrices.update_time}`;
+                }
+            }
+        }
+
+        // 在页面加载时获取价格
+        document.addEventListener('DOMContentLoaded', function() {
+            // 获取最新价格
+            fetchPlanPrices();
+            
+            // 其他初始化代码...
+        });
+
+        // 在显示支付模态框前刷新价格
+        saveConfigButton.addEventListener('click', async (event) => {
+            // 验证表单...
+            
+            // 如果需要支付，在显示模态框前刷新价格
+            if (!loggedInUser) {
+                try {
+                    await fetchPlanPrices();  // 确保显示最新价格
+                } catch (e) {
+                    console.warn("获取最新价格失败，将使用默认价格");
+                }
+                
+                // 显示支付模态框...
+            }
+        });
     </script>
 </body>
 </html> 
