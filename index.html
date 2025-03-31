@@ -929,7 +929,7 @@
             // 其他初始化代码...
         });
 
-        // 保存配置按钮点击事件
+        // 修改前端保存配置按钮处理事件
         saveConfigButton.addEventListener('click', async function() {
             clearMessages();
             
@@ -944,84 +944,81 @@
             const configData = getFormData(configForm);
             console.log('准备保存的配置数据:', configData);
             
-            // 检查用户是否已登录
-            if (loggedInUser) {
-                // 已登录用户 - 直接更新配置
-                try {
-                    showDetailedMessage(loadingMessage, '正在保存配置...', '', 'info');
+            // 获取用户输入的手机号和密码
+            const phone = document.getElementById('phone').value.trim();
+            const password = document.getElementById('password').value.trim();
+            
+            if (!phone || !password) {
+                showDetailedMessage(
+                    errorMessage,
+                    '注册信息不完整',
+                    '请在顶部填写手机号和密码，用于注册和后续登录。',
+                    'error'
+                );
+                return;
+            }
+            
+            try {
+                showDetailedMessage(loadingMessage, '正在保存配置...', '', 'info');
+                
+                const response = await fetch(`${API_BASE_URL}/api/config/update`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken || ''}`
+                    },
+                    body: JSON.stringify({
+                        phone: phone,
+                        password: password,
+                        config: configData
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    // 保存成功
+                    showDetailedMessage(
+                        successMessage,
+                        '配置更新成功！',
+                        '您的配置已成功更新，系统将按照新配置发送消息。',
+                        'success'
+                    );
+                    // 更新登录状态
+                    loggedInUser = phone;
+                    localStorage.setItem('loggedInUser', phone);
+                    updateAuthDisplay();
+                } else if (result.need_payment || response.status === 404 || response.status === 403) {
+                    // 需要支付 - 显示支付页面
+                    // 存储配置信息，以便支付完成后处理
+                    sessionStorage.setItem('pendingConfig', JSON.stringify(configData));
+                    sessionStorage.setItem('pendingPhone', phone);
+                    sessionStorage.setItem('pendingPassword', password);
                     
-                    const response = await fetch(`${API_BASE_URL}/api/config/update`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${authToken || ''}`
-                        },
-                        body: JSON.stringify({
-                            phone: loggedInUser,
-                            password: document.getElementById('password').value.trim(),
-                            config: configData
-                        })
-                    });
-                    
-                    if (!response.ok) {
-                        throw new Error(`服务器响应错误 (${response.status})`);
+                    try {
+                        // 刷新价格信息
+                        await fetchPlanPrices();
+                    } catch (e) {
+                        console.warn("获取最新价格失败，将使用默认价格");
                     }
                     
-                    const result = await response.json();
-                    console.log('配置保存结果:', result);
+                    // 显示支付模态框
+                    const paymentModal = new bootstrap.Modal(document.getElementById('paymentModal'));
+                    paymentModal.show();
                     
-                    if (result.success) {
-                        showDetailedMessage(
-                            successMessage,
-                            '配置更新成功！',
-                            '您的配置已成功更新，系统将按照新配置发送消息。',
-                            'success'
-                        );
-                    } else {
-                        throw new Error(result.message || '保存配置失败');
-                    }
-                } catch (error) {
-                    console.error('保存配置错误:', error);
-                    showDetailedMessage(
-                        errorMessage,
-                        '保存配置失败',
-                        handleApiError(error, '更新配置时'),
-                        'error'
-                    );
+                    console.log('已显示支付模态框，等待用户选择支付计划');
+                } else {
+                    // 其他错误
+                    throw new Error(result.message || '保存配置失败');
                 }
-            } else {
-                // 新用户 - 显示支付页面
-                // 获取用户输入的手机号和密码
-                const phone = document.getElementById('phone').value.trim();
-                const password = document.getElementById('password').value.trim();
-                
-                if (!phone || !password) {
-                    showDetailedMessage(
-                        errorMessage,
-                        '注册信息不完整',
-                        '请在顶部填写手机号和密码，用于注册和后续登录。',
-                        'error'
-                    );
-                    return;
-                }
-                
-                // 存储配置信息，以便支付完成后处理
-                sessionStorage.setItem('pendingConfig', JSON.stringify(configData));
-                sessionStorage.setItem('pendingPhone', phone);
-                sessionStorage.setItem('pendingPassword', password);
-                
-                try {
-                    // 刷新价格信息
-                    await fetchPlanPrices();
-                } catch (e) {
-                    console.warn("获取最新价格失败，将使用默认价格");
-                }
-                
-                // 显示支付模态框
-                const paymentModal = new bootstrap.Modal(document.getElementById('paymentModal'));
-                paymentModal.show();
-                
-                console.log('已显示支付模态框，等待用户选择支付计划');
+            } catch (error) {
+                console.error('保存配置错误:', error);
+                showDetailedMessage(
+                    errorMessage,
+                    '保存配置失败',
+                    handleApiError(error, '更新配置时'),
+                    'error'
+                );
             }
         });
 
