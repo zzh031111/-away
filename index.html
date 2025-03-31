@@ -929,20 +929,197 @@
             // 其他初始化代码...
         });
 
-        // 在显示支付模态框前刷新价格
-        saveConfigButton.addEventListener('click', async (event) => {
-            // 验证表单...
+        // 完整的保存配置按钮处理程序
+        saveConfigButton.addEventListener('click', async function() {
+            clearMessages();
             
-            // 如果需要支付，在显示模态框前刷新价格
-            if (!loggedInUser) {
+            // 验证表单
+            if (!configForm.checkValidity()) {
+                configForm.reportValidity();
+                showDetailedMessage(errorMessage, '表单验证失败', '请填写所有必填项后再保存。', 'error');
+                return;
+            }
+            
+            // 收集配置数据
+            const configData = getFormData(configForm);
+            console.log('准备保存的配置数据:', configData);
+            
+            // 检查用户是否已登录
+            if (loggedInUser) {
+                // 已登录用户 - 直接更新配置
                 try {
-                    await fetchPlanPrices();  // 确保显示最新价格
+                    showDetailedMessage(loadingMessage, '正在保存配置...', '', 'info');
+                    
+                    const response = await fetch(`${API_BASE_URL}/api/config/update`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${authToken || ''}`
+                        },
+                        body: JSON.stringify({
+                            phone: loggedInUser,
+                            password: document.getElementById('password').value.trim(),
+                            config: configData
+                        })
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`服务器响应错误 (${response.status})`);
+                    }
+                    
+                    const result = await response.json();
+                    console.log('配置保存结果:', result);
+                    
+                    if (result.success) {
+                        showDetailedMessage(
+                            successMessage,
+                            '配置更新成功！',
+                            '您的配置已成功更新，系统将按照新配置发送消息。',
+                            'success'
+                        );
+                    } else {
+                        throw new Error(result.message || '保存配置失败');
+                    }
+                } catch (error) {
+                    console.error('保存配置错误:', error);
+                    showDetailedMessage(
+                        errorMessage,
+                        '保存配置失败',
+                        handleApiError(error, '更新配置时'),
+                        'error'
+                    );
+                }
+            } else {
+                // 新用户 - 需要显示支付页面
+                // 获取用户输入的手机号和密码
+                const phone = document.getElementById('phone').value.trim();
+                const password = document.getElementById('password').value.trim();
+                
+                if (!phone || !password) {
+                    showDetailedMessage(
+                        errorMessage,
+                        '注册信息不完整',
+                        '请在顶部填写手机号和密码，用于注册和后续登录。',
+                        'error'
+                    );
+                    return;
+                }
+                
+                // 存储配置信息，以便支付完成后处理
+                sessionStorage.setItem('pendingConfig', JSON.stringify(configData));
+                sessionStorage.setItem('pendingPhone', phone);
+                sessionStorage.setItem('pendingPassword', password);
+                
+                try {
+                    // 刷新价格信息
+                    await fetchPlanPrices();
                 } catch (e) {
                     console.warn("获取最新价格失败，将使用默认价格");
                 }
                 
-                // 显示支付模态框...
+                // 显示支付模态框
+                const paymentModal = new bootstrap.Modal(document.getElementById('paymentModal'));
+                paymentModal.show();
+                
+                console.log('已显示支付模态框，等待用户选择支付计划');
             }
+        });
+
+        // 支付计划选择和处理
+        document.querySelectorAll('.plan-option').forEach(option => {
+            option.addEventListener('click', function() {
+                // 移除其他选项的选中状态
+                document.querySelectorAll('.plan-option').forEach(opt => {
+                    opt.classList.remove('selected');
+                });
+                
+                // 将当前选项标记为选中
+                this.classList.add('selected');
+                
+                // 获取选中的计划
+                const selectedPlan = this.getAttribute('data-plan');
+                console.log('已选择计划:', selectedPlan);
+                
+                // 启用确认按钮
+                document.getElementById('confirmPaymentButton').disabled = false;
+            });
+        });
+
+        // 确认支付按钮点击事件
+        document.getElementById('confirmPaymentButton').addEventListener('click', function() {
+            const selectedOption = document.querySelector('.plan-option.selected');
+            if (!selectedOption) {
+                alert('请选择一个订阅计划');
+                return;
+            }
+            
+            const plan = selectedOption.getAttribute('data-plan');
+            const phone = sessionStorage.getItem('pendingPhone');
+            const password = sessionStorage.getItem('pendingPassword');
+            const config = JSON.parse(sessionStorage.getItem('pendingConfig') || '{}');
+            
+            // 记录选择的计划
+            sessionStorage.setItem('pendingPlan', plan);
+            
+            // 在发送请求前添加回调URL
+            const callbackUrl = window.location.origin + window.location.pathname;
+            console.log("设置支付回调URL:", callbackUrl);
+            
+            // 显示加载状态
+            document.getElementById('paymentInfo').style.display = 'block';
+            document.getElementById('paymentStatus').textContent = '正在创建支付订单...';
+            
+            // 创建支付订单
+            fetch(`${API_BASE_URL}/api/payment/create-order`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    plan: plan,
+                    phone: phone,
+                    password: password,
+                    config: config,
+                    callback_url: callbackUrl
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`创建支付订单失败 (${response.status})`);
+                }
+                return response.json();
+            })
+            .then(result => {
+                console.log('创建支付订单结果:', result);
+                
+                if (result.success) {
+                    // 保存订单号
+                    sessionStorage.setItem('currentOrderId', result.order_id);
+                    
+                    // 显示支付二维码或支付链接
+                    const paymentInfo = document.getElementById('paymentInfo');
+                    const qrcodeDiv = document.getElementById('qrcode');
+                    
+                    if (result.qrcode_url) {
+                        // 显示二维码图片
+                        qrcodeDiv.innerHTML = `<img src="${result.qrcode_url}" class="img-fluid" alt="支付二维码">`;
+                        document.getElementById('paymentStatus').textContent = '请使用微信/支付宝扫描上方二维码完成支付';
+                    } else if (result.payment_url) {
+                        // 显示支付按钮
+                        qrcodeDiv.innerHTML = `<a href="${result.payment_url}" target="_blank" class="btn btn-success btn-lg">点击前往支付页面</a>`;
+                        document.getElementById('paymentStatus').textContent = '请点击上方按钮前往支付页面';
+                    }
+                    
+                    // 开始轮询支付状态
+                    startPaymentPolling(result.order_id);
+                } else {
+                    throw new Error(result.message || '创建支付订单失败');
+                }
+            })
+            .catch(error => {
+                console.error('创建支付订单错误:', error);
+                document.getElementById('paymentError').style.display = 'block';
+                document.getElementById('paymentError').textContent = error.message;
+                document.getElementById('paymentInfo').style.display = 'none';
+            });
         });
     </script>
 </body>
