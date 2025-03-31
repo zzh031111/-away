@@ -799,5 +799,108 @@
     })(); // IIFE 结束
 
     </script>
+
+    <!-- 新的支付处理脚本 - 放在页面底部 </body> 标签前 -->
+    <script>
+    // 简化版支付处理
+    document.addEventListener('DOMContentLoaded', function() {
+        // 1. 获取支付按钮
+        const monthlyBtn = document.querySelector('[data-plan="monthly"]');
+        const yearlyBtn = document.querySelector('[data-plan="annual"]');
+        
+        // 2. 为月度按钮添加点击事件
+        if (monthlyBtn) {
+            monthlyBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                console.log("月度按钮被点击");
+                processPayment('monthly');
+            });
+        }
+        
+        // 3. 为年度按钮添加点击事件
+        if (yearlyBtn) {
+            yearlyBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                console.log("年度按钮被点击");
+                processPayment('annual');
+            });
+        }
+        
+        // 4. 处理支付的函数
+        function processPayment(plan) {
+            console.log("处理支付计划:", plan);
+            
+            // 收集表单数据
+            const formData = {
+                phone: document.getElementById('phone')?.value || '',
+                password: document.getElementById('password')?.value || '',
+                config: {
+                    app_id: document.getElementById('app_id')?.value || '',
+                    app_secret: document.getElementById('app_secret')?.value || '',
+                    user_openid: document.getElementById('user_openid')?.value || '',
+                    template_id: document.getElementById('template_id')?.value || '',
+                    location_name: document.getElementById('location_name')?.value || '',
+                    adm_name: document.getElementById('adm_name')?.value || '',
+                    meet_date: document.getElementById('meet_date')?.value || '',
+                    partner_birthday: document.getElementById('partner_birthday')?.value || '',
+                    xiazhou_birthday: document.getElementById('xiazhou_birthday')?.value || ''
+                }
+            };
+            
+            // 基本验证
+            if (!formData.phone || !formData.password) {
+                alert("请输入手机号和密码");
+                return;
+            }
+            
+            if (!formData.config.app_id || !formData.config.app_secret) {
+                alert("请填写微信公众号配置信息");
+                return;
+            }
+            
+            // 发送支付请求
+            fetch('https://1337331310-2gg2yrldrk.ap-beijing.tencentscf.com/api/payment/create-order', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    plan: plan,
+                    phone: formData.phone,
+                    password: formData.password,
+                    config: formData.config
+                })
+            })
+            .then(function(response) {
+                if (!response.ok) {
+                    throw new Error('网络请求失败: ' + response.status);
+                }
+                return response.json();
+            })
+            .then(function(data) {
+                if (data.success && data.payment_info) {
+                    // 创建并提交支付表单
+                    var div = document.createElement('div');
+                    div.style.display = 'none';
+                    div.innerHTML = data.payment_info.redirect_form;
+                    document.body.appendChild(div);
+                    
+                    setTimeout(function() {
+                        var form = document.getElementById('payform');
+                        if (form) {
+                            form.submit();
+                        } else {
+                            window.location.href = data.payment_info.qr_code_url;
+                        }
+                    }, 100);
+                } else {
+                    alert('创建订单失败: ' + (data.message || '未知错误'));
+                }
+            })
+            .catch(function(error) {
+                console.error('支付请求错误:', error);
+                alert('支付错误: ' + error.message);
+            });
+        }
+    });
+    </script>
 </body>
 </html> 
