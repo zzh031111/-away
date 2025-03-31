@@ -632,19 +632,22 @@
         // --- 初始化 ---
         updateLoginStatus(); // 页面加载时检查登录状态
 
-        // 定义全局变量
+        // 1. 定义支付相关的全局变量 - 在现有的脚本中添加
         let paymentInfo = null;
         let currentOrderId = null;
         let currentPlan = null;
         
-        // 覆盖现有的createPaymentOrder函数
+        // 2. 修改createPaymentOrder函数，避免与原有功能冲突
         function createPaymentOrder(plan) {
             const phone = document.getElementById('phone').value;
             const password = document.getElementById('password').value;
             let config = {};
             
             try {
-                config = collectFormData();
+                // 如果有collectFormData函数就调用它
+                if (typeof collectFormData === 'function') {
+                    config = collectFormData();
+                }
             } catch(e) {
                 console.error("收集表单数据出错:", e);
             }
@@ -656,7 +659,7 @@
             
             // 找到加载和错误显示元素
             const paymentLoading = document.getElementById('payment-loading');
-            const paymentQrcode = document.getElementById('payment-qrcode') || document.getElementById('paymentQrcode');
+            const paymentQrcode = document.getElementById('payment-qrcode') || document.getElementById('qrcode');
             const paymentError = document.getElementById('paymentError');
             
             // 显示加载中
@@ -692,7 +695,7 @@
                     if (paymentInfo && paymentInfo.payment_type === 'form_redirect') {
                         // 创建一个容器来放置表单HTML
                         const formContainer = document.createElement('div');
-                        formContainer.style.display = 'none'; // 隐藏起来，因为表单会自动提交
+                        formContainer.style.display = 'none';
                         formContainer.innerHTML = paymentInfo.redirect_form;
                         document.body.appendChild(formContainer);
                         
@@ -701,14 +704,13 @@
                             paymentQrcode.innerHTML = '<p>正在跳转到支付页面，请稍候...</p>';
                         }
                         
-                        // 如果表单没有自动提交，可以手动触发
+                        // 延迟提交表单
                         setTimeout(() => {
                             try {
                                 const form = document.getElementById('payform');
                                 if (form) form.submit();
                             } catch (e) {
                                 console.error('提交表单失败:', e);
-                                // 提供支付链接作为备选
                                 if(paymentQrcode) {
                                     paymentQrcode.innerHTML = '<p>自动跳转失败，请<a href="' + 
                                         paymentInfo.qr_code_url + '" target="_blank">点击此处</a>前往支付</p>';
@@ -716,8 +718,10 @@
                             }
                         }, 1000);
                     } else {
-                        // 在这里处理其他支付方式，如二维码
-                        console.log("处理其他支付方式");
+                        // 处理二维码支付
+                        if (window.QRCode && paymentQrcode) {
+                            new QRCode(paymentQrcode, paymentInfo.qr_code_url);
+                        }
                     }
                 } else {
                     // 显示错误信息
@@ -747,8 +751,9 @@
             });
         }
         
-        // 页面加载完成后执行
-        document.addEventListener('DOMContentLoaded', function() {
+        // 3. 确保不会干扰原有的注册按钮事件处理
+        // 页面加载完成后，只处理支付相关的元素，不干扰注册按钮
+        window.addEventListener('load', function() {
             // 找到所有计划选择按钮并添加事件监听器
             const planButtons = document.querySelectorAll('.plan-option');
             
@@ -778,7 +783,53 @@
                     }
                 });
             }
+            
+            // 检查已有的按钮事件是否正常 - 不要覆盖原有的事件
+            console.log("支付处理代码已加载");
         });
+
+        // 4. 手动检查注册按钮事件
+        const registerButton = document.getElementById('registerButton');
+        if(registerButton && !registerButton._hasClickListener) {
+            registerButton._hasClickListener = true;
+            registerButton.addEventListener('click', function() {
+                console.log("注册按钮被点击");
+                // 如果原有的注册函数存在，手动调用它
+                if(typeof handleRegister === 'function') {
+                    handleRegister();
+                } else {
+                    // 如果找不到原有的处理函数，提供一个临时的实现
+                    const phone = document.getElementById('phone').value;
+                    const password = document.getElementById('password').value;
+                    
+                    if(!phone || !password) {
+                        alert("请输入手机号和密码");
+                        return;
+                    }
+                    
+                    fetch('/api/auth/register', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ phone, password })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if(data.success) {
+                            alert("注册成功！");
+                            // 显示配置区域
+                            const configSection = document.getElementById('configSection');
+                            if(configSection) configSection.style.display = 'block';
+                        } else {
+                            alert("注册失败: " + (data.message || "未知错误"));
+                        }
+                    })
+                    .catch(error => {
+                        alert("注册请求失败，请稍后再试");
+                        console.error("注册错误:", error);
+                    });
+                }
+            });
+        }
 
     </script>
 </body>
