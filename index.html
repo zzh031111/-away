@@ -622,17 +622,27 @@
                     
                     let successText = `<strong class="d-block mb-2" style="font-size: 1.1rem; color: #155724;">请确认您的微信是否收到测试消息。</strong>`;
                     
+                    // 添加微信消息接收方式说明
+                    successText += `<div class="p-3 mb-2 bg-light border rounded">
+                        <strong class="d-block mb-1" style="color: #0c5460;">微信消息接收说明：</strong>
+                        <ul class="mb-0">
+                            <li>当接收者手机没打开微信时，消息将以<strong>弹窗通知</strong>方式显示</li>
+                            <li>当接收者正在使用微信时，消息会存入到<strong>订阅号列表</strong>中</li>
+                        </ul>
+                    </div>`;
+                    
+                    // 下一步操作提示
                     if (isLoggedIn) {
-                        // 已登录用户可以直接保存
+                        // 已登录用户
                         successText += `<div class="p-3 mb-2 bg-light border rounded">
                             <strong class="d-block mb-1" style="color: #721c24;">下一步操作：</strong>
                             测试成功后，请点击"保存配置"按钮保存您的更新。您的配置将立即生效。
                         </div>`;
                     } else {
-                        // 新用户需要付款注册
+                        // 新用户 - 移除付款相关内容
                         successText += `<div class="p-3 mb-2 bg-light border rounded">
                             <strong class="d-block mb-1" style="color: #721c24;">下一步操作：</strong>
-                            测试成功后，请点击"保存配置"按钮完成注册。首次配置需要付款，付款成功后您的账号将自动注册。
+                            点击保存配置后，系统将自动为您注册账号，并开始每日推送！
                             <br>注册成功后，您可以随时使用手机号和密码登录并修改配置。
                         </div>`;
                     }
