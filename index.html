@@ -633,114 +633,198 @@
         updateLoginStatus(); // 页面加载时检查登录状态
 
         // 支付处理函数
-        function handlePayment(plan) {
-            console.log("处理支付请求:", plan);
-            
-            // 获取用户输入
-            const phone = document.getElementById('phone').value;
-            const password = document.getElementById('password').value;
-            
-            // 验证输入
-            if (!phone || !password) {
-                alert('请先填写手机号和密码');
-                return;
-            }
-            
-            // 收集配置数据
-            let config = {};
-            try {
-                if (typeof collectFormData === 'function') {
-                    config = collectFormData();
-                }
-            } catch(e) {
-                console.error("收集表单数据错误:", e);
-                alert("配置数据收集失败，请检查表单填写是否完整");
-                return;
-            }
-            
-            // 验证配置
-            if (!config.app_id || !config.app_secret) {
-                alert('请完善微信公众号配置信息');
-                return;
-            }
-            
-            // 显示加载状态
-            const paymentError = document.getElementById('paymentError');
-            if (paymentError) {
-                paymentError.style.display = 'none';
-            }
-            
-            // 发送支付请求
-            fetch('https://1337331310-2gg2yrldrk.ap-beijing.tencentscf.com/api/payment/create-order', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    plan: plan,
-                    phone: phone,
-                    password: password,
-                    config: config
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // 保存订单ID
-                    const orderId = data.order_id;
-                    
-                    // 处理支付表单
-                    const formContainer = document.createElement('div');
-                    formContainer.style.display = 'none';
-                    formContainer.innerHTML = data.payment_info.redirect_form;
-                    document.body.appendChild(formContainer);
-                    
-                    // 提交表单
-                    setTimeout(() => {
-                        const form = document.getElementById('payform');
-                        if (form) {
-                            form.submit();
-                        } else {
-                            // 如果表单提交失败，提供支付链接
-                            window.location.href = data.payment_info.qr_code_url;
-                        }
-                    }, 100);
+        (function() { // 使用 IIFE 隔离作用域
+            function handlePayment(plan) {
+                console.log(`[handlePayment] 开始处理支付计划: ${plan}`);
+
+                const paymentErrorElement = document.getElementById('paymentError');
+                if (paymentErrorElement) {
+                    paymentErrorElement.style.display = 'none'; // 隐藏之前的错误
+                    paymentErrorElement.textContent = '';
                 } else {
-                    if (paymentError) {
-                        paymentError.textContent = data.message || '创建订单失败';
-                        paymentError.style.display = 'block';
-                    } else {
-                        alert('创建订单失败: ' + (data.message || '未知错误'));
+                    console.error("[handlePayment] 错误显示元素 #paymentError 未找到!");
+                }
+
+                let phone, password, config = {};
+
+                try {
+                    // 获取用户输入
+                    phone = document.getElementById('phone').value;
+                    password = document.getElementById('password').value;
+                    console.log("[handlePayment] 手机号:", phone ? '已获取' : '缺失', "密码:", password ? '已获取' : '缺失');
+
+                    // 验证输入
+                    if (!phone || !password) {
+                        alert('请先填写手机号和密码');
+                        console.warn("[handlePayment] 验证失败: 手机号或密码缺失。");
+                        return; // 停止执行
                     }
+
+                    // 收集配置数据
+                    if (typeof collectFormData === 'function') {
+                        config = collectFormData();
+                        console.log("[handlePayment] 配置数据已收集:", config);
+                    } else {
+                         console.warn("[handlePayment] collectFormData 函数未找到。");
+                         // 如果 collectFormData 是必须的，这里可能需要报错并返回
+                         // alert('无法收集配置数据，请检查页面脚本。');
+                         // return;
+                    }
+
+                    // 验证配置 (根据您的业务逻辑调整)
+                    if (!config.app_id || !config.app_secret) {
+                        alert('请完善微信公众号配置信息 (AppID 和 AppSecret)');
+                         console.warn("[handlePayment] 验证失败: 配置 app_id 或 app_secret 缺失。");
+                        return; // 停止执行
+                    }
+                     console.log("[handlePayment] 输入和配置验证成功。");
+
+                } catch (error) {
+                    console.error("[handlePayment] 获取输入或配置时出错:", error);
+                    if (paymentErrorElement) {
+                        paymentErrorElement.textContent = '读取输入或配置时出错: ' + error.message;
+                        paymentErrorElement.style.display = 'block';
+                    } else {
+                        alert('读取输入或配置时出错: ' + error.message);
+                    }
+                    return; // 停止执行
                 }
-            })
-            .catch(error => {
-                console.error('支付请求错误:', error);
-                if (paymentError) {
-                    paymentError.textContent = '创建订单时出错: ' + error.message;
-                    paymentError.style.display = 'block';
+
+                console.log("[handlePayment] 正在发送 fetch 请求创建订单...");
+                // 发送支付请求
+                fetch('https://1337331310-2gg2yrldrk.ap-beijing.tencentscf.com/api/payment/create-order', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        plan: plan,
+                        phone: phone,
+                        password: password,
+                        config: config
+                        // 如果需要区分注册和普通支付，可以在这里添加标记
+                        // register: true
+                    })
+                })
+                .then(response => {
+                     console.log(`[handlePayment] Fetch 响应状态: ${response.status}`);
+                    if (!response.ok) {
+                        // 在尝试解析JSON之前处理HTTP错误
+                        throw new Error(`HTTP 错误 ${response.status}`);
+                    }
+                    return response.json(); // 尝试解析JSON
+                })
+                .then(data => {
+                     console.log("[handlePayment] Fetch 响应数据已接收:", data);
+                    if (data && data.success) {
+                         console.log("[handlePayment] 订单创建成功。订单 ID:", data.order_id);
+
+                        // --- 安全地访问 payment_info ---
+                        // 检查 payment_info 和 redirect_form 是否存在
+                        if (data.payment_info && data.payment_info.redirect_form) {
+                             console.log("[handlePayment] 正在处理表单重定向。");
+                            // 处理支付表单
+                            const formContainer = document.createElement('div');
+                            formContainer.style.display = 'none';
+                            // 在这里安全地访问 redirect_form
+                            formContainer.innerHTML = data.payment_info.redirect_form;
+                            document.body.appendChild(formContainer);
+
+                            // 提交表单
+                            setTimeout(() => {
+                                const form = document.getElementById('payform');
+                                if (form) {
+                                     console.log("[handlePayment] 正在提交支付表单。");
+                                    form.submit();
+                                } else {
+                                     console.warn("[handlePayment] 注入后未找到支付表单 #payform。将尝试通过 URL 重定向。");
+                                    // 如果表单提交失败，提供支付链接作为备选
+                                    if (data.payment_info.qr_code_url) {
+                                         // 安全地访问 qr_code_url
+                                        window.location.href = data.payment_info.qr_code_url;
+                                    } else {
+                                         console.error("[handlePayment] 未找到备用支付 URL!");
+                                         alert("支付表单提交失败，且无备用支付链接。");
+                                    }
+                                }
+                            }, 100); // 短暂延迟以确保表单已添加到DOM
+                        } else {
+                             // 如果支付信息或表单缺失，则抛出错误
+                             console.error("[handlePayment] 成功响应中缺少支付信息或重定向表单:", data.payment_info);
+                             throw new Error("从服务器返回的支付信息不完整，无法继续。");
+                        }
+                    } else {
+                         // 如果 success 不为 true 或 data 不存在
+                         console.error("[handlePayment] 订单创建失败或 success 标志缺失。消息:", data ? data.message : '无数据');
+                        // 抛出错误，由 .catch 处理
+                        throw new Error(data && data.message ? data.message : '创建订单失败');
+                    }
+                })
+                .catch(error => {
+                    // 这个 catch 会捕获 fetch 本身的错误 (如网络问题)
+                    // 或者从 .then 块中抛出的错误 (HTTP错误, JSON解析错误, 逻辑错误)
+                    console.error('[handlePayment] Fetch 或处理过程中出错:', error);
+                    if (paymentErrorElement) {
+                        paymentErrorElement.textContent = '创建订单时出错: ' + error.message;
+                        paymentErrorElement.style.display = 'block';
+                    } else {
+                        alert('创建订单时出错: ' + error.message);
+                    }
+                });
+            }
+
+            // 页面加载完成后设置事件监听
+            document.addEventListener('DOMContentLoaded', function() {
+                console.log('[DOMContentLoaded] 正在设置支付按钮监听器。');
+                // 为月度和年度按钮添加点击事件
+                const monthlyBtn = document.querySelector('[data-plan="monthly"]');
+                // 假设年度计划的按钮属性是 data-plan="annual"
+                const yearlyBtn = document.querySelector('[data-plan="annual"]');
+
+                if (monthlyBtn) {
+                    monthlyBtn.addEventListener('click', (event) => {
+                        event.preventDefault(); // 阻止按钮默认行为 (例如提交表单)
+                        console.log('[DOMContentLoaded] 月度按钮被点击。');
+                        handlePayment('monthly');
+                    });
+                     console.log('[DOMContentLoaded] 月度按钮监听器已附加。');
                 } else {
-                    alert('创建订单时出错: ' + error.message);
+                     console.warn('[DOMContentLoaded] 未找到月度按钮 [data-plan="monthly"]。');
                 }
+
+                if (yearlyBtn) {
+                    yearlyBtn.addEventListener('click', (event) => {
+                        event.preventDefault(); // 阻止按钮默认行为
+                        console.log('[DOMContentLoaded] 年度按钮被点击。');
+                        // 确保这里的 'annual' 与您的计划标识符匹配
+                        handlePayment('annual');
+                    });
+                     console.log('[DOMContentLoaded] 年度按钮监听器已附加。');
+                } else {
+                     console.warn('[DOMContentLoaded] 未找到年度按钮 [data-plan="annual"]。');
+                }
+
+                // 修复其他按钮无响应的问题 (示例：关闭按钮)
+                const closeButton = document.getElementById('closePaymentModalButton'); // 假设有关闭按钮
+                if (closeButton) {
+                    closeButton.addEventListener('click', function() {
+                        console.log("关闭按钮被点击");
+                        // 在这里添加关闭支付界面的逻辑
+                        const paymentModal = document.getElementById('paymentModal'); // 假设支付界面是一个模态框
+                        if (paymentModal) {
+                            paymentModal.style.display = 'none';
+                        }
+                    });
+                    console.log('[DOMContentLoaded] 关闭按钮监听器已附加。');
+                } else {
+                    console.warn('[DOMContentLoaded] 未找到关闭按钮 #closePaymentModalButton。');
+                }
+
+
+                console.log('[DOMContentLoaded] 支付处理设置完成。');
             });
-        }
-        
-        // 页面加载完成后设置事件监听
-        document.addEventListener('DOMContentLoaded', function() {
-            // 为月度和年度按钮添加点击事件
-            const monthlyBtn = document.querySelector('[data-plan="monthly"]');
-            const yearlyBtn = document.querySelector('[data-plan="annual"]');
-            
-            if (monthlyBtn) {
-                monthlyBtn.addEventListener('click', () => handlePayment('monthly'));
-            }
-            
-            if (yearlyBtn) {
-                yearlyBtn.addEventListener('click', () => handlePayment('annual'));
-            }
-            
-            console.log('支付处理初始化完成');
-        });
+
+        })(); // IIFE 结束
 
     </script>
 </body>
