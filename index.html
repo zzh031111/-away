@@ -685,6 +685,86 @@
             });
         }
 
+        // 处理支付请求
+        async function handlePaymentRequest(plan) {
+            const phone = document.getElementById('phone').value;
+            const password = document.getElementById('password').value;
+            const config = collectFormData();
+            
+            if (!phone) {
+                showMessage(paymentError, '请先输入手机号', false);
+                return;
+            }
+            
+            paymentError.style.display = 'none';
+            paymentLoading.style.display = 'block';
+            paymentQrcode.innerHTML = '';
+            currentPlan = plan;
+            
+            try {
+                // 记录当前订单所需信息
+                const payload = {
+                    plan: plan,
+                    phone: phone,
+                    password: password,
+                    config: config
+                };
+                
+                const result = await apiCall('/api/payment/create-order', 'POST', payload);
+                
+                paymentLoading.style.display = 'none';
+                
+                if (result.success) {
+                    currentOrderId = result.order_id;
+                    
+                    // 先定义变量再使用它
+                    const paymentInfo = result.payment_info;
+                    
+                    // 根据支付类型处理
+                    if (paymentInfo.payment_type === 'form_redirect') {
+                        // 创建表单重定向
+                        const formContainer = document.createElement('div');
+                        formContainer.style.display = 'none';
+                        formContainer.innerHTML = paymentInfo.redirect_form;
+                        document.body.appendChild(formContainer);
+                        
+                        paymentQrcode.innerHTML = '<p>正在跳转到支付页面，请稍候...</p>';
+                        
+                        // 自动提交表单
+                        setTimeout(() => {
+                            try {
+                                const form = document.getElementById('payform');
+                                if (form) form.submit();
+                            } catch (e) {
+                                console.error('提交表单失败:', e);
+                                paymentQrcode.innerHTML = '<p>跳转失败，请<a href="' + 
+                                    paymentInfo.qr_code_url + '" target="_blank">点击此处</a>前往支付</p>';
+                            }
+                        }, 1000);
+                    } else {
+                        // 处理二维码
+                        new QRCode(qrcodeContainer, {
+                            text: paymentInfo.qr_code_url,
+                            width: 128,
+                            height: 128,
+                        });
+                        paymentStatus.textContent = '请使用微信/支付宝扫描二维码支付...';
+                    }
+                    
+                    // 开始轮询支付状态
+                    startPaymentPolling(result.order_id);
+                } else {
+                    paymentError.textContent = result.message || '创建支付订单失败。';
+                    paymentError.style.display = 'block';
+                }
+            } catch (error) {
+                paymentLoading.style.display = 'none';
+                paymentError.textContent = '网络错误，请稍后再试。';
+                paymentError.style.display = 'block';
+                console.error('支付请求错误:', error);
+            }
+        }
+
     </script>
 </body>
 </html> 
