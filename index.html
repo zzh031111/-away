@@ -632,17 +632,85 @@
         // --- 初始化 ---
         updateLoginStatus(); // 页面加载时检查登录状态
 
-        // 不重新声明已存在的变量，只检查并在需要时更新
-        // 使用函数封装我们的修复，避免全局变量冲突
+        // 使用立即执行函数封装我们的修复代码
         (function() {
-            // 检查支付功能
+            // 修复注册按钮功能 - 只创建账号，不保存配置
+            function fixRegisterButton() {
+                const registerButton = document.getElementById('registerButton');
+                if (!registerButton) {
+                    console.log("未找到注册按钮");
+                    return;
+                }
+                
+                // 清除所有现有事件处理函数
+                const newButton = registerButton.cloneNode(true);
+                registerButton.parentNode.replaceChild(newButton, registerButton);
+                
+                // 添加新的事件处理
+                newButton.addEventListener('click', function() {
+                    console.log("注册按钮被点击");
+                    
+                    const phone = document.getElementById('phone').value;
+                    const password = document.getElementById('password').value;
+                    
+                    if (!phone || !password) {
+                        alert("请输入手机号和密码");
+                        return;
+                    }
+                    
+                    // 显示加载状态
+                    newButton.disabled = true;
+                    newButton.innerText = "注册中...";
+                    
+                    // 使用正确的云函数URL
+                    const apiUrl = 'https://1337331310-2gg2yrldrk.ap-beijing.tencentscf.com/api/auth/register';
+                    
+                    // 发送注册请求 - 只注册账号，不保存配置
+                    fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            phone: phone, 
+                            password: password,
+                            saveConfig: false // 标记不保存配置，只创建账号
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        newButton.disabled = false;
+                        newButton.innerText = "注册并配置";
+                        
+                        if (data.success) {
+                            alert("注册成功！请填写配置并选择一个订阅计划");
+                            // 显示配置区域，让用户填写
+                            const configSection = document.getElementById('configSection');
+                            if (configSection) configSection.style.display = 'block';
+                            // 显示已登录状态
+                            const statusElement = document.getElementById('loginStatus');
+                            if (statusElement) statusElement.textContent = '已登录';
+                            // 显示支付区域
+                            const paymentSection = document.getElementById('paymentSection');
+                            if (paymentSection) paymentSection.style.display = 'block';
+                        } else {
+                            alert("注册失败: " + (data.message || "未知错误"));
+                        }
+                    })
+                    .catch(error => {
+                        newButton.disabled = false;
+                        newButton.innerText = "注册并配置";
+                        alert("注册请求失败，请稍后再试");
+                        console.error("注册错误:", error);
+                    });
+                });
+                
+                console.log("注册按钮已修复");
+            }
+            
+            // 修复支付功能 - 在支付时同时提交配置
             function fixPaymentFunctionality() {
-                // 找到并修正原始的createPaymentOrder函数
                 if (typeof window.createPaymentOrder === 'function') {
-                    // 保存原始函数的引用
                     const originalCreatePaymentOrder = window.createPaymentOrder;
                     
-                    // 替换为我们的修复版本
                     window.createPaymentOrder = function(plan) {
                         console.log("调用修复后的支付函数", plan);
                         
@@ -650,38 +718,45 @@
                             const phone = document.getElementById('phone').value;
                             const password = document.getElementById('password').value;
                             
+                            // 收集完整的配置数据
+                            let config = {};
+                            try {
+                                if (typeof collectFormData === 'function') {
+                                    config = collectFormData();
+                                }
+                            } catch(e) {
+                                console.error("收集表单数据错误:", e);
+                            }
+                            
                             if (!phone) {
                                 alert('请先输入手机号');
                                 return;
                             }
                             
-                            // 配置数据
-                            let config = {};
-                            if (typeof collectFormData === 'function') {
-                                try {
-                                    config = collectFormData();
-                                } catch(e) {
-                                    console.error("收集表单数据错误:", e);
-                                }
+                            // 验证必要的配置字段
+                            if (!config.app_id || !config.app_secret) {
+                                alert('请先完善微信公众号配置信息');
+                                return;
                             }
                             
-                            // 显示加载状态
                             const paymentLoading = document.getElementById('payment-loading');
-                            const paymentQrcode = document.getElementById('qrcode') || document.getElementById('payment-qrcode');
+                            const paymentQrcode = document.getElementById('qrcode');
                             const paymentError = document.getElementById('paymentError');
                             
                             if (paymentLoading) paymentLoading.style.display = 'block';
                             if (paymentError) paymentError.style.display = 'none';
+                            if (paymentQrcode) paymentQrcode.innerHTML = '';
                             
-                            // 发送支付请求
-                            fetch('/api/payment/create-order', {
+                            // 发送支付请求 - 包含完整配置信息
+                            fetch('https://1337331310-2gg2yrldrk.ap-beijing.tencentscf.com/api/payment/create-order', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({
                                     plan: plan,
                                     phone: phone, 
                                     password: password,
-                                    config: config
+                                    config: config,  // 支付成功后会使用这个保存配置
+                                    saveConfig: true // 标记支付成功后保存配置
                                 })
                             })
                             .then(response => response.json())
@@ -689,11 +764,10 @@
                                 if (paymentLoading) paymentLoading.style.display = 'none';
                                 
                                 if (data.success) {
-                                    // 不重新赋值全局变量，直接使用data中的值
-                                    if (window.currentOrderId !== undefined) {
-                                        window.currentOrderId = data.order_id;
-                                    }
+                                    // 保存订单ID到sessionStorage，用于后续查询
+                                    sessionStorage.setItem('currentOrderId', data.order_id);
                                     
+                                    // 处理支付信息
                                     const info = data.payment_info;
                                     
                                     if (info && info.payment_type === 'form_redirect') {
@@ -722,19 +796,17 @@
                                     } else if (window.QRCode && paymentQrcode) {
                                         // 处理二维码支付
                                         new QRCode(paymentQrcode, info.qr_code_url);
-                                        if (document.getElementById('paymentStatus')) {
-                                            document.getElementById('paymentStatus').textContent = 
-                                                '请使用微信/支付宝扫描二维码支付...';
-                                        }
+                                        
+                                        // 开始轮询支付状态
+                                        startPaymentPolling(data.order_id);
                                     }
                                 } else {
-                                    // 显示错误
-                                    const errorMsg = data.message || '创建订单失败';
+                                    // 显示错误信息
                                     if (paymentError) {
-                                        paymentError.textContent = errorMsg;
+                                        paymentError.textContent = data.message || '创建订单失败';
                                         paymentError.style.display = 'block';
                                     } else {
-                                        alert(errorMsg);
+                                        alert('创建订单失败: ' + (data.message || '未知错误'));
                                     }
                                 }
                             })
@@ -745,11 +817,10 @@
                                 if (paymentError) {
                                     paymentError.textContent = errorMsg;
                                     paymentError.style.display = 'block';
-                                } else if (paymentQrcode) {
-                                    paymentQrcode.innerHTML = '<p>' + errorMsg + '</p>';
                                 } else {
                                     alert(errorMsg);
                                 }
+                                console.error('支付请求错误:', error);
                             });
                         } catch (e) {
                             console.error("支付处理出错:", e);
@@ -761,63 +832,48 @@
                 }
             }
             
-            // 修复注册按钮功能
-            function fixRegisterButton() {
-                const registerButton = document.getElementById('registerButton');
-                if (!registerButton) {
-                    console.log("未找到注册按钮");
-                    return;
-                }
+            // 添加支付状态轮询功能
+            function startPaymentPolling(orderId) {
+                if (!orderId) return;
                 
-                // 清除所有现有事件处理函数
-                const newButton = registerButton.cloneNode(true);
-                registerButton.parentNode.replaceChild(newButton, registerButton);
+                console.log("开始轮询支付状态:", orderId);
+                const pollInterval = 5000; // 每5秒查询一次
+                const maxAttempts = 60; // 最多查询60次（5分钟）
+                let attempts = 0;
                 
-                // 添加新的事件处理
-                newButton.addEventListener('click', function() {
-                    console.log("注册按钮被点击");
-                    
-                    const phone = document.getElementById('phone').value;
-                    const password = document.getElementById('password').value;
-                    
-                    if (!phone || !password) {
-                        alert("请输入手机号和密码");
+                const checkPaymentStatus = function() {
+                    if (attempts >= maxAttempts) {
+                        console.log("轮询超时，支付可能未完成");
                         return;
                     }
                     
-                    // 显示加载状态
-                    newButton.disabled = true;
-                    newButton.innerText = "注册中...";
+                    attempts++;
                     
-                    // 发送注册请求
-                    fetch('/api/auth/register', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ phone, password })
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        newButton.disabled = false;
-                        newButton.innerText = "注册并配置";
-                        
-                        if (data.success) {
-                            alert("注册成功！");
-                            // 显示配置区域
-                            const configSection = document.getElementById('configSection');
-                            if (configSection) configSection.style.display = 'block';
-                        } else {
-                            alert("注册失败: " + (data.message || "未知错误"));
-                        }
-                    })
-                    .catch(error => {
-                        newButton.disabled = false;
-                        newButton.innerText = "注册并配置";
-                        alert("注册请求失败，请稍后再试");
-                        console.error("注册错误:", error);
-                    });
-                });
+                    fetch(`https://1337331310-2gg2yrldrk.ap-beijing.tencentscf.com/api/payment/query?order_id=${orderId}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success && data.paid) {
+                                // 支付成功
+                                console.log("支付成功!");
+                                alert("支付成功！配置已保存，服务已开通。");
+                                clearTimeout(pollTimer);
+                                
+                                // 更新UI状态或跳转到成功页面
+                                window.location.href = "/success.html";
+                            } else if (!data.success) {
+                                console.log("查询支付状态失败:", data.message);
+                            } else {
+                                // 继续轮询
+                                pollTimer = setTimeout(checkPaymentStatus, pollInterval);
+                            }
+                        })
+                        .catch(error => {
+                            console.error("查询支付状态出错:", error);
+                            pollTimer = setTimeout(checkPaymentStatus, pollInterval);
+                        });
+                };
                 
-                console.log("注册按钮已修复");
+                let pollTimer = setTimeout(checkPaymentStatus, pollInterval);
             }
             
             // 等待页面完全加载
@@ -829,6 +885,13 @@
                 
                 // 修复注册按钮
                 fixRegisterButton();
+                
+                // 如果有存储的订单ID，可以查询其状态
+                const savedOrderId = sessionStorage.getItem('currentOrderId');
+                if (savedOrderId) {
+                    console.log("发现未完成的订单:", savedOrderId);
+                    // 可以在这里恢复支付状态查询
+                }
                 
                 console.log("功能修复完成");
             });
