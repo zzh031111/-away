@@ -968,11 +968,40 @@
                 if (phone) {
                     localStorage.setItem('loggedInUser', phone);
                     
-                    // 直接更新UI显示，不调用不存在的函数
+                    // 直接更新UI显示
                     document.getElementById('userStatus').textContent = `状态：已登录 (${phone})`;
                     document.getElementById('authForm').style.display = 'none';
                     document.getElementById('logoutButton').style.display = 'inline-block';
                     document.querySelector('.config-section').style.display = 'block';
+                    
+                    // 保存用户数据和配置 - 在支付成功处理中添加直接保存用户和配置的代码
+                    const password = sessionStorage.getItem('pendingPassword');
+                    const config = JSON.parse(sessionStorage.getItem('pendingConfig') || '{}');
+                    const plan = sessionStorage.getItem('pendingPlan') || 'monthly';
+                    
+                    // 直接调用保存接口
+                    fetch(`${API_BASE_URL}/api/payment/complete-setup`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            phone: phone,
+                            password: password,
+                            config: config,
+                            plan: plan,
+                            payment_result: 'success',
+                            order_id: sessionStorage.getItem('currentOrderId')
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(result => {
+                        console.log('用户设置完成结果:', result);
+                        if (result.success) {
+                            console.log('用户和配置已保存');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('保存用户数据失败:', error);
+                    });
                 }
                 
                 // 清除临时会话数据
@@ -1334,45 +1363,6 @@
                 }
             } catch (error) {
                 console.error('获取价格信息失败:', error);
-            }
-        }
-
-        // 在支付成功处理中添加直接保存用户和配置的代码
-        if (paymentResult === 'success') {
-            // 显示支付成功提示...
-            
-            // 保存用户数据和配置
-            const phone = sessionStorage.getItem('pendingPhone');
-            const password = sessionStorage.getItem('pendingPassword');
-            const config = JSON.parse(sessionStorage.getItem('pendingConfig') || '{}');
-            const plan = sessionStorage.getItem('pendingPlan') || 'monthly';
-            
-            if (phone) {
-                // 直接调用保存接口
-                fetch(`${API_BASE_URL}/api/payment/complete-setup`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        phone: phone,
-                        password: password,
-                        config: config,
-                        plan: plan,
-                        payment_result: 'success',
-                        order_id: sessionStorage.getItem('currentOrderId')
-                    })
-                })
-                .then(response => response.json())
-                .then(result => {
-                    console.log('用户设置完成结果:', result);
-                    if (result.success) {
-                        console.log('用户和配置已保存');
-                    }
-                })
-                .catch(error => {
-                    console.error('保存用户数据失败:', error);
-                });
-                
-                // 其他代码...
             }
         }
     </script>
