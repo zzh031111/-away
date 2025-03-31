@@ -397,34 +397,111 @@
             }
         }
 
-        // 测试发送
+        // 1. 全局错误处理函数 - 更加详细的错误信息
+        function handleApiError(error, context = '') {
+            // 分析错误类型，提供更具体的错误信息
+            let errorMessage = error.message || '未知错误';
+            let suggestion = '';
+            
+            // 根据错误信息内容提供具体建议
+            if (errorMessage.includes('access token') || errorMessage.includes('令牌') || errorMessage.includes('appsecret')) {
+                suggestion = '请检查您的微信公众号配置信息（AppID和AppSecret）是否正确。';
+            } else if (errorMessage.includes('template') || errorMessage.includes('模板')) {
+                suggestion = '请检查模板ID是否正确，并确认该模板已在微信公众平台启用。';
+            } else if (errorMessage.includes('openid')) {
+                suggestion = '请检查接收者的OpenID是否正确。';
+            } else if (errorMessage.includes('支付') || errorMessage.includes('payment') || errorMessage.includes('order')) {
+                suggestion = '支付过程中出现问题，请稍后重试或联系客服。';
+            } else if (errorMessage.includes('权限') || errorMessage.includes('permission') || errorMessage.includes('unauthorized')) {
+                suggestion = '您可能需要重新登录或没有足够的权限执行此操作。';
+            }
+            
+            // 构建完整的错误信息
+            const fullErrorMessage = `${context ? context + ': ' : ''}${errorMessage}${suggestion ? ' ' + suggestion : ''}`;
+            
+            // 记录到控制台并返回格式化的消息
+            console.error(`错误: ${context}`, error);
+            return fullErrorMessage;
+        }
+
+        // 2. 改进的数据验证函数 - 对所有配置项进行详细验证
+        function validateConfig(config) {
+            const errors = [];
+            
+            // 检查微信配置
+            if (!config.app_id) errors.push('缺少AppID');
+            else if (config.app_id.length < 10) errors.push('AppID格式可能不正确');
+            
+            if (!config.app_secret) errors.push('缺少AppSecret');
+            else if (config.app_secret.length < 10) errors.push('AppSecret格式可能不正确');
+            
+            if (!config.user_openid) errors.push('缺少接收者OpenID');
+            if (!config.template_id) errors.push('缺少消息模板ID');
+            
+            // 检查地理位置配置
+            if (!config.location_name) errors.push('缺少区县名称');
+            if (!config.adm_name) errors.push('缺少市/省名称');
+            
+            // 返回验证结果
+            return {
+                isValid: errors.length === 0,
+                errors: errors,
+                errorMessage: errors.join('、')
+            };
+        }
+
+        // 3. 添加详细的消息显示功能 - 支持多行和HTML内容
+        function showDetailedMessage(element, title, details, type = 'info') {
+            let alertClass = 'alert-info';
+            if (type === 'success') alertClass = 'alert-success';
+            if (type === 'error') alertClass = 'alert-danger';
+            if (type === 'warning') alertClass = 'alert-warning';
+            
+            element.innerHTML = `
+                <strong>${title}</strong>
+                ${details ? `<div class="mt-2">${details}</div>` : ''}
+            `;
+            element.className = `alert ${alertClass}`;
+            element.style.display = 'block';
+            
+            // 滚动到消息位置
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        // 4. 改进测试发送按钮的处理
         testSendButton.addEventListener('click', async () => {
             clearMessages();
+            
+            // 验证表单基础有效性
             if (!configForm.checkValidity()) {
-                showMessage(errorMessage, '请填写所有必填项后再发送测试。', false);
+                showDetailedMessage(errorMessage, '表单验证失败', '请填写所有必填项后再发送测试。', 'error');
                 configForm.reportValidity();
                 return;
             }
-
-            setConfigFormDisabled(true);
-            loadingMessage.textContent = '正在发送测试消息...';
-            loadingMessage.style.display = 'block';
-
+            
             // 收集表单数据
             const configData = getFormData(configForm);
             
-            // 添加调试日志，检查要发送的数据
-            console.log('准备发送到morning_greeting的数据:', JSON.stringify(configData, null, 2));
-
-            // 确认必填字段
-            if (!configData.user_openid || !configData.location_name || !configData.adm_name) {
-                errorMessage.textContent = '错误: 请确保填写了微信用户ID、区县名和市/省名';
-                errorMessage.style.display = 'block';
-                loadingMessage.style.display = 'none';
-                setConfigFormDisabled(false);
+            // 进行详细验证
+            const validation = validateConfig(configData);
+            if (!validation.isValid) {
+                showDetailedMessage(errorMessage, '配置信息不完整', `请完善以下信息: ${validation.errorMessage}`, 'error');
                 return;
             }
-
+            
+            // 清理所有可能带空格的字段 (虽然getFormData已经处理，这里是额外保险)
+            Object.keys(configData).forEach(key => {
+                if (typeof configData[key] === 'string') {
+                    configData[key] = configData[key].trim();
+                }
+            });
+            
+            // 添加调试日志，检查要发送的数据
+            console.log('准备发送到morning_greeting的数据:', JSON.stringify(configData, null, 2));
+            
+            setConfigFormDisabled(true);
+            showDetailedMessage(loadingMessage, '正在发送测试消息...', '请留意您的微信，查看是否收到消息。', 'info');
+            
             // 测试发送直接调用 morning_greeting 函数
             try {
                 const response = await fetch(MORNING_GREETING_URL, {
@@ -442,466 +519,197 @@
                 try {
                     result = JSON.parse(responseText);
                 } catch (e) {
-                    console.error('解析响应JSON失败:', e);
-                    throw new Error('服务器返回了无效的JSON数据');
+                    throw new Error('服务器返回了无效的JSON数据，可能是服务器错误');
                 }
                 
-                console.log('Test send result:', result);
-                loadingMessage.style.display = 'none';
+                console.log('测试发送结果:', result);
+                
                 if (result.success) {
-                    successMessage.textContent = `消息发送成功！ 请确认消息接收对象的微信上是否收到测试消息。重要提示：请点击"保存配置"按钮，才能保存配置信息，以便日后正常推送！`;
-                    successMessage.style.display = 'block';
+                    showDetailedMessage(
+                        successMessage, 
+                        '测试消息发送成功！', 
+                        `请确认您的微信是否收到测试消息。<br><br><strong>重要提示：</strong>测试成功后，请点击"保存配置"按钮并完成订阅，才能保存配置信息用于日常推送。`, 
+                        'success'
+                    );
                 } else {
-                    errorMessage.textContent = `测试失败：${result.message || '未知错误，请检查后端日志。'}`;
-                    errorMessage.style.display = 'block';
+                    let errorDetails = result.message || '未知错误';
+                    
+                    // 提供更具体的错误解释
+                    if (errorDetails.includes('invalid appsecret')) {
+                        errorDetails += '<br><br>原因：AppSecret不正确。请确保从微信公众平台复制的AppSecret准确无误，没有多余的空格或换行。';
+                    } else if (errorDetails.includes('invalid openid')) {
+                        errorDetails += '<br><br>原因：OpenID不正确。请检查您填写的用户OpenID是否属于您的公众号粉丝。';
+                    } else if (errorDetails.includes('template')) {
+                        errorDetails += '<br><br>原因：模板ID可能有误，或该模板未在您的公众号中启用。';
+                    }
+                    
+                    showDetailedMessage(errorMessage, '测试发送失败', errorDetails, 'error');
                 }
             } catch (error) {
-                console.error('Test send fetch error:', error);
-                loadingMessage.style.display = 'none';
-                errorMessage.textContent = `测试请求失败：${error.message}`;
-                errorMessage.style.display = 'block';
+                console.error('测试发送请求错误:', error);
+                showDetailedMessage(
+                    errorMessage, 
+                    '测试请求失败', 
+                    handleApiError(error, '发送测试消息时出错'), 
+                    'error'
+                );
             } finally {
                 setConfigFormDisabled(false);
             }
         });
 
-        // 保存配置按钮点击
-        saveConfigButton.addEventListener('click', () => {
-            clearMessages();
-            if (!configForm.checkValidity()) {
-                showMessage(errorMessage, '请填写所有必填项后再保存。', false);
-                configForm.reportValidity();
-                return;
-            }
-
-            // 弹出支付模态框
-            currentPlan = null; // 重置选择
-            currentOrderId = null;
-            stopPaymentPolling(); // 停止之前的轮询
-            document.querySelectorAll('.plan-option').forEach(el => el.classList.remove('selected'));
-            paymentInfo.style.display = 'none';
-            qrcodeContainer.innerHTML = ''; // 清空二维码
-            confirmPaymentButton.disabled = true;
-            paymentModal.show();
-        });
-
-        // 选择支付计划
-        document.querySelectorAll('.plan-option').forEach(el => {
-            el.addEventListener('click', () => {
-                document.querySelectorAll('.plan-option').forEach(el => el.classList.remove('selected'));
-                el.classList.add('selected');
-                currentPlan = el.getAttribute('data-plan');
-                confirmPaymentButton.disabled = false; // 启用确认支付按钮
-                paymentInfo.style.display = 'none'; // 隐藏旧的支付信息
-                paymentError.style.display = 'none';
-                stopPaymentPolling();
-            });
-        });
-
-        // 确认支付按钮点击
-        confirmPaymentButton.addEventListener('click', async () => {
-            if (!currentPlan) {
-                paymentError.textContent = '请先选择一个订阅计划。';
-                paymentError.style.display = 'block';
-                return;
-            }
-            paymentError.style.display = 'none';
-            confirmPaymentButton.disabled = true; // 防止重复点击
-            confirmPaymentButton.textContent = '正在创建订单...';
-
-            try {
-                // 准备要保存的数据
-                const configData = getFormData(configForm);
-                const phone = document.getElementById('phone').value; // 获取认证表单的手机号
-                const password = document.getElementById('password').value; // 获取认证表单的密码
-
-                // 如果是注册流程，需要包含手机和密码
-                const saveData = {
-                    plan: currentPlan,
-                    config: configData,
-                    phone: phone, // 始终传递手机号
-                    password: password // 传递密码用于注册或验证（后端决定如何使用）
-                };
-
-                // 调用后端创建支付订单接口
-                const result = await apiCall('/api/payment/create-order', 'POST', saveData, !!authToken); // 如果有token则传递
-
-                if (result.success && result.payment_info) {
-                    currentOrderId = result.order_id;
-                    paymentInfo.style.display = 'block';
-                    qrcodeContainer.innerHTML = ''; // 清空旧二维码
-
-                    // --- 这里需要根据支付服务商返回的信息展示支付方式 ---
-                    const paymentInfo = result.payment_info;
-                    if (paymentInfo.payment_type === 'form_redirect') {
-                        // 记录订单ID用于后续查询
-                        localStorage.setItem('current_payment_order_id', result.order_id);
-                        
-                        // 直接打开支付URL
-                        window.open(paymentInfo.qr_code_url, '_blank');
-                        
-                        // 显示支付处理信息
-                        document.getElementById('payment-qrcode').innerHTML = 
-                            '<p>支付窗口已打开，如未跳转请<a href="' + paymentInfo.qr_code_url + 
-                            '" target="_blank">点击此处</a>前往支付</p>';
-                        
-                        // 开始轮询支付状态
-                        startPaymentPolling(result.order_id);
-                    } else {
-                        // 原始的二维码处理逻辑
-                        document.getElementById('payment-qrcode').innerHTML = ''; // 清空之前的内容
-                        new QRCode(document.getElementById('payment-qrcode'), paymentInfo.qr_code_url);
-                        
-                        // 开始轮询支付状态
-                        startPaymentPolling(result.order_id);
-                    }
-                    // --- 支付方式展示结束 ---
-
-                } else {
-                    paymentError.textContent = result.message || '创建支付订单失败。';
-                    paymentError.style.display = 'block';
-                }
-
-            } catch (error) {
-                paymentError.textContent = `创建订单时出错: ${error.message}`;
-                paymentError.style.display = 'block';
-            } finally {
-                 confirmPaymentButton.disabled = false;
-                 confirmPaymentButton.textContent = '确认支付';
-            }
-        });
-
-        // 开始轮询支付状态
-        function startPaymentPolling(orderId) {
-            console.log("开始轮询支付状态，订单ID:", orderId);
-            let pollCount = 0;
+        // 5. 改进支付回调处理
+        function checkForPaymentCallback() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const orderId = urlParams.get('out_trade_no') || urlParams.get('order_id');
+            const tradeStatus = urlParams.get('trade_status') || urlParams.get('trade_state') || urlParams.get('status');
             
-            // 清除可能存在的旧轮询
-            if (paymentPollInterval) {
-                clearInterval(paymentPollInterval);
-            }
+            console.log("检查URL参数:", window.location.search);
+            console.log("解析的订单ID:", orderId);
+            console.log("交易状态:", tradeStatus);
             
-            // 显示支付状态区域
-            if (paymentStatus) {
-                paymentStatus.textContent = "正在查询支付状态...";
-                paymentStatus.style.display = 'block';
-            }
-            
-            // 设置轮询
-            paymentPollInterval = setInterval(async () => {
-                pollCount++;
-                console.log(`轮询支付状态 #${pollCount}, 订单ID: ${orderId}`);
+            // 如果在URL参数中发现了订单信息
+            if (orderId) {
+                console.log("检测到支付回调，订单ID:", orderId);
                 
+                // 从存储中恢复之前保存的配置
+                const pendingConfig = sessionStorage.getItem('pendingConfig');
+                const pendingPhone = sessionStorage.getItem('pendingPhone');
+                const pendingPassword = sessionStorage.getItem('pendingPassword');
+                
+                if (!pendingConfig || !pendingPhone || !pendingPassword) {
+                    console.error("错误: 找不到待处理的配置信息");
+                    showDetailedMessage(
+                        errorMessage,
+                        '配置数据丢失',
+                        '支付可能已完成，但无法恢复您的配置信息。<br><br>这可能是因为：<br>1. 浏览器缓存被清除<br>2. 您使用了不同的浏览器或设备完成支付<br>3. 会话已过期<br><br>请刷新页面并重新填写配置。',
+                        'error'
+                    );
+                    return;
+                }
+                
+                // 解析配置
+                let config;
                 try {
-                    const response = await fetch(`${API_BASE_URL}/api/payment/check-status?order_id=${orderId}`);
-                    const result = await response.json();
-                    
-                    console.log("支付状态查询结果:", result);
-                    
-                    if (result.success && result.paid) {
-                        // 支付成功
-                        console.log("支付成功，准备存储用户配置");
-                        paymentStatus.textContent = "支付成功！正在保存配置...";
-                        
-                        // 停止轮询
-                        clearInterval(paymentPollInterval);
-                        paymentPollInterval = null;
-                        
-                        // 获取之前保存的配置
-                        const savedConfig = JSON.parse(sessionStorage.getItem('pendingConfig') || '{}');
-                        const savedPhone = sessionStorage.getItem('pendingPhone');
-                        const savedPassword = sessionStorage.getItem('pendingPassword');
-                        
-                        console.log("恢复的用户配置:", JSON.stringify(savedConfig, null, 2));
-                        console.log("恢复的用户手机:", savedPhone);
-                        
-                        // 确保配置数据完整
-                        if (!savedConfig || !savedPhone || !savedPassword) {
-                            console.error("恢复的配置数据不完整");
-                            paymentStatus.textContent = "支付成功，但配置数据恢复失败。请刷新页面重试。";
-                            return;
+                    config = JSON.parse(pendingConfig);
+                } catch (e) {
+                    console.error("解析配置数据失败:", e);
+                    showDetailedMessage(
+                        errorMessage,
+                        '数据格式错误',
+                        '恢复配置数据时出错。请重新填写配置并再次尝试支付。',
+                        'error'
+                    );
+                    return;
+                }
+                
+                console.log("从会话存储恢复的配置:", config);
+                
+                // 再次进行配置验证
+                const validation = validateConfig(config);
+                if (!validation.isValid) {
+                    showDetailedMessage(
+                        errorMessage,
+                        '配置信息不完整',
+                        `恢复的配置数据缺少必要信息: ${validation.errorMessage}。请重新填写并再次尝试。`,
+                        'error'
+                    );
+                    return;
+                }
+                
+                // 检查支付状态 (通过API)
+                console.log("验证支付状态...");
+                showDetailedMessage(loadingMessage, "正在验证支付状态", "请不要关闭或刷新页面...", 'info');
+                
+                // 调用检查支付状态的API
+                fetch(`${API_BASE_URL}/api/payment/check-status?order_id=${orderId}`)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`支付状态查询失败 (${response.status})`);
                         }
+                        return response.json();
+                    })
+                    .then(result => {
+                        console.log("支付状态检查结果:", result);
                         
-                        // 向wx_config_api发送保存请求
-                        try {
-                            const saveResponse = await fetch(`${API_BASE_URL}/api/config/save`, {
+                        if (result.success && result.paid) {
+                            // 支付成功，保存配置
+                            console.log("支付已确认，正在保存配置...");
+                            showDetailedMessage(loadingMessage, "支付成功", "正在保存您的配置信息...", 'info');
+                            
+                            // 调用保存配置的API
+                            return fetch(`${API_BASE_URL}/api/config/save`, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({
-                                    phone: savedPhone,
-                                    password: savedPassword,
-                                    config: savedConfig,
-                                    order_id: orderId // 包含订单ID以验证支付
+                                    phone: pendingPhone.trim(),
+                                    password: pendingPassword.trim(),
+                                    config: config,  // config应该已经在之前的步骤中trim过了
+                                    order_id: orderId.trim()
                                 })
                             });
-                            
-                            const saveResult = await saveResponse.json();
-                            console.log("配置保存结果:", saveResult);
-                            
-                            if (saveResult.success) {
-                                paymentStatus.textContent = "支付成功！配置已保存。";
-                                // 可以关闭模态框或重定向
-                                setTimeout(() => {
-                                    paymentModal.hide();
-                                    // 刷新页面或显示成功消息
-                                    showMessage(successMessage, "配置已成功保存并激活订阅！", true);
-                                }, 2000);
-                            } else {
-                                paymentStatus.textContent = `支付成功，但配置保存失败: ${saveResult.message || '未知错误'}`;
-                            }
-                        } catch (error) {
-                            console.error("保存配置时出错:", error);
-                            paymentStatus.textContent = `支付成功，但配置保存请求失败: ${error.message}`;
+                        } else if (result.success && !result.paid) {
+                            throw new Error("支付尚未完成。如果您已经付款，请稍后刷新页面，或联系客服处理。");
+                        } else {
+                            throw new Error(result.message || "支付验证失败，请联系客服处理。");
                         }
-                    } else if (result.success && !result.paid) {
-                        // 等待支付
-                        paymentStatus.textContent = `等待支付... (查询次数: ${pollCount})`;
-                    } else {
-                        // 查询失败
-                        paymentStatus.textContent = `查询支付状态失败: ${result.message || '未知错误'} (查询次数: ${pollCount})`;
-                    }
-                } catch (error) {
-                    console.error("支付状态查询错误:", error);
-                    paymentStatus.textContent = `查询支付状态出错: ${error.message} (查询次数: ${pollCount})`;
-                }
-            }, 5000); // 每5秒查询一次
-            
-            return paymentPollInterval;
-        }
-
-        // 停止轮询
-        function stopPaymentPolling() {
-            if (paymentPollInterval) {
-                clearInterval(paymentPollInterval);
-                paymentPollInterval = null;
-            }
-        }
-
-        // 模态框关闭时停止轮询
-        paymentModalElement.addEventListener('hidden.bs.modal', () => {
-            stopPaymentPolling();
-        });
-
-        // 初始化Bootstrap模态框
-        document.addEventListener('DOMContentLoaded', function() {
-            const paymentModalEl = document.getElementById('paymentModal');
-            if (paymentModalEl) {
-                const paymentModal = new bootstrap.Modal(paymentModalEl, {
-                    backdrop: 'static',  // 不允许点击背景关闭
-                    keyboard: false      // 不允许按ESC关闭
-                });
-                
-                // 修改现有的显示模态框的代码
-                window.showPaymentModal = function() {
-                    paymentModal.show();
-                };
-                
-                // 模态框关闭后的清理
-                paymentModalEl.addEventListener('hidden.bs.modal', function() {
-                    // 清理支付状态
-                    if (document.getElementById('paymentQrcode')) {
-                        document.getElementById('paymentQrcode').innerHTML = '';
-                    }
-                    if (document.getElementById('paymentError')) {
-                        document.getElementById('paymentError').style.display = 'none';
-                    }
-                });
-            }
-        });
-
-        // --- 初始化 ---
-        // updateLoginStatus(); // 暂时注释掉，以防它内部有问题
-
-        // 清理页面，只保留一个支付处理逻辑
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log("初始化支付处理程序");
-            
-            // 查找已存在的支付按钮
-            // 从模态框定义可以看出，支付按钮位于 #paymentModal 内部
-            const monthlyBtn = document.querySelector('#paymentModal [data-plan="monthly"]');
-            const yearlyBtn = document.querySelector('#paymentModal [data-plan="annual"]');
-            
-            console.log("月度按钮:", monthlyBtn ? "已找到" : "未找到");
-            console.log("年度按钮:", yearlyBtn ? "已找到" : "未找到");
-            
-            // 为按钮添加点击处理
-            if (monthlyBtn) {
-                monthlyBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    handlePayment('monthly');
-                });
-            }
-            
-            if (yearlyBtn) {
-                yearlyBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    handlePayment('annual');
-                });
-            }
-            
-            // 统一的支付处理函数
-            function handlePayment(plan) {
-                console.log("处理支付计划:", plan);
-                
-                // 收集用户信息和配置
-                const phone = document.getElementById('phone').value;
-                const password = document.getElementById('password').value;
-                
-                // 基本验证
-                if (!phone || !password) {
-                    alert("请输入手机号和密码");
-                    return;
-                }
-                
-                // 收集表单配置
-                const config = {
-                    app_id: document.getElementById('app_id').value || '',
-                    app_secret: document.getElementById('app_secret').value || '',
-                    user_openid: document.getElementById('user_openid').value || '',
-                    template_id: document.getElementById('template_id').value || '',
-                    location_name: document.getElementById('location_name').value || '',
-                    adm_name: document.getElementById('adm_name').value || '',
-                    meet_date: document.getElementById('meet_date').value || '',
-                    partner_birthday: document.getElementById('partner_birthday').value || '',
-                    xiazhou_birthday: document.getElementById('xiazhou_birthday').value || ''
-                };
-                
-                // 记录支付前的配置数据
-                console.log("支付过程中的用户配置数据:", JSON.stringify(config, null, 2));
-                
-                // 验证配置
-                if (!config.app_id || !config.app_secret) {
-                    alert("请填写微信公众号配置信息");
-                    return;
-                }
-                
-                // 验证关键参数
-                if (!config.user_openid || !config.location_name || !config.adm_name) {
-                    alert("请确保填写了微信用户ID、区县名和市/省名");
-                    return;
-                }
-                
-                // 显示加载状态
-                const paymentLoading = document.getElementById('paymentLoading');
-                const paymentError = document.getElementById('paymentError');
-                
-                if (paymentLoading) paymentLoading.style.display = 'block';
-                if (paymentError) paymentError.style.display = 'none';
-                
-                // 提示用户
-                console.log("正在发送支付请求...");
-                
-                // 保存当前配置到sessionStorage，以便支付完成后能恢复
-                sessionStorage.setItem('pendingConfig', JSON.stringify(config));
-                sessionStorage.setItem('pendingPhone', phone);
-                sessionStorage.setItem('pendingPassword', password);
-                sessionStorage.setItem('pendingPlan', plan);
-                
-                // 发送请求
-                fetch('https://1337331310-2gg2yrldrk.ap-beijing.tencentscf.com/api/payment/create-order', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        plan: plan,
-                        phone: phone,
-                        password: password,
-                        config: config
                     })
-                })
-                .then(function(response) {
-                    if (!response.ok) {
-                        throw new Error('请求失败: ' + response.status);
-                    }
-                    return response.json();
-                })
-                .then(function(data) {
-                    console.log("支付API响应:", data);
-                    
-                    if (paymentLoading) paymentLoading.style.display = 'none';
-                    
-                    if (data.success && data.payment_info) {
-                        // 保存订单ID用于后续查询
-                        if (data.order_id) {
-                            sessionStorage.setItem('currentOrderId', data.order_id);
-                            console.log("已保存订单ID:", data.order_id);
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`配置保存请求失败 (${response.status})`);
                         }
+                        return response.json();
+                    })
+                    .then(saveResult => {
+                        console.log("配置保存结果:", saveResult);
                         
-                        // 创建并提交支付表单
-                        console.log("准备提交支付表单...");
-                        var div = document.createElement('div');
-                        div.style.display = 'none';
-                        div.innerHTML = data.payment_info.redirect_form;
-                        document.body.appendChild(div);
-                        
-                        // 延迟执行以确保表单添加到DOM
-                        setTimeout(function() {
-                            const form = document.getElementById('payform');
-                            if (form) {
-                                console.log("提交支付表单");
-                                form.submit();
-                            } else {
-                                console.log("表单未找到，使用支付链接");
-                                window.location.href = data.payment_info.qr_code_url;
+                        if (saveResult.success) {
+                            showDetailedMessage(
+                                successMessage, 
+                                "配置保存成功！", 
+                                `您的订阅已激活，系统将按照配置在每天早晨为您推送消息。<br><br>订单号: ${orderId}<br>手机号: ${pendingPhone}<br><br>您可以随时登录修改配置信息。`, 
+                                'success'
+                            );
+                            
+                            // 清理会话存储
+                            sessionStorage.removeItem('pendingConfig');
+                            sessionStorage.removeItem('pendingPhone');
+                            sessionStorage.removeItem('pendingPassword');
+                            sessionStorage.removeItem('pendingPlan');
+                            sessionStorage.removeItem('currentOrderId');
+                            
+                            // 更新URL以移除支付参数
+                            window.history.replaceState({}, document.title, window.location.pathname);
+                            
+                            // 自动更新登录状态和加载配置 (如果需要)
+                            if (!authToken || !loggedInUser) {
+                                // 可能需要自动登录用户
+                                localStorage.setItem('loggedInUser', pendingPhone);
+                                updateLoginStatus();
                             }
-                        }, 300);
-                    } else {
-                        if (paymentError) {
-                            paymentError.textContent = data.message || '创建订单失败';
-                            paymentError.style.display = 'block';
-                } else {
-                            alert('创建订单失败: ' + (data.message || '未知错误'));
+                        } else {
+                            throw new Error(saveResult.message || "配置保存失败，请联系客服处理。");
                         }
-                    }
-                })
-                .catch(function(error) {
-                    console.error('支付处理错误:', error);
-                    
-                    if (paymentLoading) paymentLoading.style.display = 'none';
-                    
-                    if (paymentError) {
-                        paymentError.textContent = error.message;
-                        paymentError.style.display = 'block';
-                    } else {
-                        alert('支付处理错误: ' + error.message);
-                    }
-                });
-            }
-        });
-
-        // 在支付状态查询成功的地方添加日志
-        function checkPaymentStatus() {
-            // 现有代码...
-            if (result.success && result.paid) {
-                console.log("支付成功，准备存储用户配置");
-                // 获取之前保存的配置
-                const savedConfig = JSON.parse(sessionStorage.getItem('pendingConfig') || '{}');
-                const savedPhone = sessionStorage.getItem('pendingPhone');
-                console.log("恢复的用户配置:", JSON.stringify(savedConfig, null, 2));
-                console.log("恢复的用户手机:", savedPhone);
-                
-                // 确保wx_config_api收到正确数据
-                // 现有的存储逻辑...
+                    })
+                    .catch(error => {
+                        console.error("处理支付回调时出错:", error);
+                        showDetailedMessage(
+                            errorMessage, 
+                            "支付处理出错", 
+                            handleApiError(error, "处理支付结果时"), 
+                            'error'
+                        );
+                        
+                        // 提供重试选项
+                        setTimeout(() => {
+                            if (confirm("是否尝试重新验证支付状态并保存配置？")) {
+                                // 重试逻辑
+                                checkForPaymentCallback();
+                            }
+                        }, 5000);  // 给用户5秒时间阅读错误信息
+                    });
             }
         }
-
-        // 确保处理支付结果页面时恢复配置
-        document.addEventListener('DOMContentLoaded', function() {
-            // 检查URL是否是支付结果页
-            if (window.location.pathname === '/payment-result') {
-                console.log("检测到支付结果页面，准备处理结果");
-                
-                // 从sessionStorage获取信息
-                const pendingConfig = sessionStorage.getItem('pendingConfig');
-                const pendingPhone = sessionStorage.getItem('pendingPhone');
-                
-                if (pendingConfig && pendingPhone) {
-                    console.log("发现待处理的配置信息:", pendingConfig);
-                    // 可以在这里添加向wx_config_api发送最终确认存储的请求
-                } else {
-                    console.warn("未找到待处理的配置信息");
-                }
-            }
-        });
     </script>
 </body>
 </html> 
