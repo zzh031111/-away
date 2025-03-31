@@ -1118,6 +1118,97 @@
                 document.getElementById('paymentInfo').style.display = 'none';
             });
         });
+
+        // 添加支付状态轮询函数
+        function startPaymentPolling(orderId) {
+            console.log(`开始轮询订单 ${orderId} 的支付状态`);
+            let pollingCount = 0;
+            const maxPolls = 60; // 最多轮询60次（约10分钟）
+            
+            // 显示等待提示
+            document.getElementById('paymentStatus').textContent = '等待支付完成，请不要关闭页面...';
+            
+            // 轮询间隔（毫秒）
+            const pollingInterval = 10000; // 10秒
+            
+            // 保存轮询计时器ID，以便可以停止轮询
+            const timerId = setInterval(async function() {
+                pollingCount++;
+                console.log(`第 ${pollingCount} 次检查订单状态：${orderId}`);
+                
+                try {
+                    // 调用查询订单状态API
+                    const response = await fetch(`${API_BASE_URL}/api/payment/check-status?order_id=${orderId}`, {
+                        method: 'GET',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`查询支付状态失败 (${response.status})`);
+                    }
+                    
+                    const result = await response.json();
+                    console.log('订单状态查询结果:', result);
+                    
+                    // 如果支付成功
+                    if (result.success && result.status === 'PAID') {
+                        // 停止轮询
+                        clearInterval(timerId);
+                        
+                        // 更新UI显示支付成功
+                        document.getElementById('paymentStatus').textContent = '支付成功！正在处理您的订阅...';
+                        
+                        // 3秒后关闭支付模态框并刷新页面
+                        setTimeout(function() {
+                            // 关闭支付模态框
+                            const paymentModal = bootstrap.Modal.getInstance(document.getElementById('paymentModal'));
+                            paymentModal.hide();
+                            
+                            // 显示成功信息
+                            showDetailedMessage(
+                                successMessage,
+                                '支付成功！',
+                                '您的配置已保存，系统将按照配置每天发送消息。',
+                                'success'
+                            );
+                            
+                            // 设置登录状态
+                            const phone = sessionStorage.getItem('pendingPhone');
+                            loggedInUser = phone;
+                            localStorage.setItem('loggedInUser', phone);
+                            updateAuthDisplay();
+                            
+                            // 清除临时存储
+                            sessionStorage.removeItem('pendingConfig');
+                            sessionStorage.removeItem('pendingPhone');
+                            sessionStorage.removeItem('pendingPassword');
+                            sessionStorage.removeItem('pendingPlan');
+                            sessionStorage.removeItem('currentOrderId');
+                            
+                            // 显示配置部分
+                            configSection.style.display = 'block';
+                        }, 3000);
+                        
+                        return;
+                    }
+                    
+                    // 如果已达到最大轮询次数
+                    if (pollingCount >= maxPolls) {
+                        clearInterval(timerId);
+                        document.getElementById('paymentStatus').textContent = '支付超时。如已支付，请联系客服或稍后刷新页面查看。';
+                        return;
+                    }
+                    
+                    // 继续等待支付
+                    document.getElementById('paymentStatus').textContent = 
+                        `等待支付完成，请不要关闭页面...（${Math.round((maxPolls - pollingCount) * pollingInterval / 60000)}分钟后超时）`;
+                    
+                } catch (error) {
+                    console.error('轮询支付状态时出错:', error);
+                    document.getElementById('paymentStatus').textContent = `检查支付状态出错: ${error.message}`;
+                }
+            }, pollingInterval);
+        }
     </script>
 </body>
 </html> 
