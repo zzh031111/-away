@@ -234,14 +234,31 @@
             }
         }
 
-        function getFormData(formElement) {
-            const formData = new FormData(formElement);
-            const data = {};
-            formData.forEach((value, key) => {
-                // 可以在这里添加trim等处理
-                data[key] = value;
+        function getFormData(form) {
+            const formData = {};
+            // 记录在收集过程中的任何问题
+            let missingFields = [];
+            
+            // 获取所有输入字段
+            const inputs = form.querySelectorAll('input, select, textarea');
+            
+            inputs.forEach(input => {
+                if (input.name) {
+                    formData[input.name] = input.value;
+                    // 检查必填字段是否填写
+                    if (input.required && !input.value) {
+                        missingFields.push(input.name);
+                    }
+                }
             });
-            return data;
+            
+            // 记录收集结果
+            console.log('表单数据收集结果:', formData);
+            if (missingFields.length > 0) {
+                console.warn('缺少必填字段:', missingFields);
+            }
+            
+            return formData;
         }
 
         // --- API 调用 ---
@@ -383,39 +400,67 @@
         testSendButton.addEventListener('click', async () => {
             clearMessages();
             if (!configForm.checkValidity()) {
-                showMessage(errorMessage, '请填写所有必填项后再测试。', false);
+                showMessage(errorMessage, '请填写所有必填项后再发送测试。', false);
                 configForm.reportValidity();
                 return;
             }
+
             setConfigFormDisabled(true);
-            loadingMessage.textContent = '正在发送测试消息，请稍候...';
+            loadingMessage.textContent = '正在发送测试消息...';
             loadingMessage.style.display = 'block';
 
+            // 收集表单数据
             const configData = getFormData(configForm);
+            
+            // 添加调试日志，检查要发送的数据
+            console.log('准备发送到morning_greeting的数据:', JSON.stringify(configData, null, 2));
+
+            // 确认必填字段
+            if (!configData.user_openid || !configData.location_name || !configData.adm_name) {
+                errorMessage.textContent = '错误: 请确保填写了微信用户ID、区县名和市/省名';
+                errorMessage.style.display = 'block';
+                loadingMessage.style.display = 'none';
+                setConfigFormDisabled(false);
+                return;
+            }
+
             // 测试发送直接调用 morning_greeting 函数
             try {
                 const response = await fetch(MORNING_GREETING_URL, {
-                method: 'POST',
+                    method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(configData),
                 });
-                const result = await response.json();
-                 console.log('Test send result:', result);
+                
+                // 记录原始响应
+                const responseText = await response.text();
+                console.log('来自morning_greeting的原始响应:', responseText);
+                
+                // 解析JSON
+                let result;
+                try {
+                    result = JSON.parse(responseText);
+                } catch (e) {
+                    console.error('解析响应JSON失败:', e);
+                    throw new Error('服务器返回了无效的JSON数据');
+                }
+                
+                console.log('Test send result:', result);
                 loadingMessage.style.display = 'none';
                 if (result.success) {
-                     successMessage.textContent = `消息发送成功！ 请确认消息接收对象的微信上是否收到测试消息。重要提示：请点击"保存配置"按钮，才能保存配置信息，以便日后正常推送！`;
+                    successMessage.textContent = `消息发送成功！ 请确认消息接收对象的微信上是否收到测试消息。重要提示：请点击"保存配置"按钮，才能保存配置信息，以便日后正常推送！`;
                     successMessage.style.display = 'block';
-                 } else {
-                     errorMessage.textContent = `测试失败：${result.message || '未知错误，请检查后端日志。'}`;
-                     errorMessage.style.display = 'block';
-                 }
+                } else {
+                    errorMessage.textContent = `测试失败：${result.message || '未知错误，请检查后端日志。'}`;
+                    errorMessage.style.display = 'block';
+                }
             } catch (error) {
-                 console.error('Test send fetch error:', error);
-                 loadingMessage.style.display = 'none';
-                 errorMessage.textContent = `测试请求失败：${error.message}`;
-                 errorMessage.style.display = 'block';
+                console.error('Test send fetch error:', error);
+                loadingMessage.style.display = 'none';
+                errorMessage.textContent = `测试请求失败：${error.message}`;
+                errorMessage.style.display = 'block';
             } finally {
-                 setConfigFormDisabled(false);
+                setConfigFormDisabled(false);
             }
         });
 
@@ -686,9 +731,18 @@
                     xiazhou_birthday: document.getElementById('xiazhou_birthday').value || ''
                 };
                 
+                // 记录支付前的配置数据
+                console.log("支付过程中的用户配置数据:", JSON.stringify(config, null, 2));
+                
                 // 验证配置
                 if (!config.app_id || !config.app_secret) {
                     alert("请填写微信公众号配置信息");
+                    return;
+                }
+                
+                // 验证关键参数
+                if (!config.user_openid || !config.location_name || !config.adm_name) {
+                    alert("请确保填写了微信用户ID、区县名和市/省名");
                     return;
                 }
                 
@@ -701,6 +755,12 @@
                 
                 // 提示用户
                 console.log("正在发送支付请求...");
+                
+                // 保存当前配置到sessionStorage，以便支付完成后能恢复
+                sessionStorage.setItem('pendingConfig', JSON.stringify(config));
+                sessionStorage.setItem('pendingPhone', phone);
+                sessionStorage.setItem('pendingPassword', password);
+                sessionStorage.setItem('pendingPlan', plan);
                 
                 // 发送请求
                 fetch('https://1337331310-2gg2yrldrk.ap-beijing.tencentscf.com/api/payment/create-order', {
@@ -770,6 +830,41 @@
                         alert('支付处理错误: ' + error.message);
                     }
                 });
+            }
+        });
+
+        // 在支付状态查询成功的地方添加日志
+        function checkPaymentStatus() {
+            // 现有代码...
+            if (result.success && result.paid) {
+                console.log("支付成功，准备存储用户配置");
+                // 获取之前保存的配置
+                const savedConfig = JSON.parse(sessionStorage.getItem('pendingConfig') || '{}');
+                const savedPhone = sessionStorage.getItem('pendingPhone');
+                console.log("恢复的用户配置:", JSON.stringify(savedConfig, null, 2));
+                console.log("恢复的用户手机:", savedPhone);
+                
+                // 确保wx_config_api收到正确数据
+                // 现有的存储逻辑...
+            }
+        }
+
+        // 确保处理支付结果页面时恢复配置
+        document.addEventListener('DOMContentLoaded', function() {
+            // 检查URL是否是支付结果页
+            if (window.location.pathname === '/payment-result') {
+                console.log("检测到支付结果页面，准备处理结果");
+                
+                // 从sessionStorage获取信息
+                const pendingConfig = sessionStorage.getItem('pendingConfig');
+                const pendingPhone = sessionStorage.getItem('pendingPhone');
+                
+                if (pendingConfig && pendingPhone) {
+                    console.log("发现待处理的配置信息:", pendingConfig);
+                    // 可以在这里添加向wx_config_api发送最终确认存储的请求
+                } else {
+                    console.warn("未找到待处理的配置信息");
+                }
             }
         });
     </script>
