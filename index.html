@@ -632,181 +632,164 @@
         // --- 初始化 ---
         updateLoginStatus(); // 页面加载时检查登录状态
 
-        // 1. 定义支付相关的全局变量 - 在现有的脚本中添加
-        let paymentInfo = null;
-        let currentOrderId = null;
-        let currentPlan = null;
-        
-        // 2. 修改createPaymentOrder函数，避免与原有功能冲突
-        function createPaymentOrder(plan) {
-            const phone = document.getElementById('phone').value;
-            const password = document.getElementById('password').value;
-            let config = {};
-            
-            try {
-                // 如果有collectFormData函数就调用它
-                if (typeof collectFormData === 'function') {
-                    config = collectFormData();
-                }
-            } catch(e) {
-                console.error("收集表单数据出错:", e);
-            }
-            
-            if (!phone) {
-                alert('请先输入手机号');
-                return;
-            }
-            
-            // 找到加载和错误显示元素
-            const paymentLoading = document.getElementById('payment-loading');
-            const paymentQrcode = document.getElementById('payment-qrcode') || document.getElementById('qrcode');
-            const paymentError = document.getElementById('paymentError');
-            
-            // 显示加载中
-            if(paymentLoading) paymentLoading.style.display = 'block';
-            if(paymentQrcode) paymentQrcode.innerHTML = '';
-            if(paymentError) paymentError.style.display = 'none';
-            
-            // 发送请求创建支付订单
-            fetch('/api/payment/create-order', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    plan: plan,
-                    phone: phone,
-                    password: password,
-                    config: config
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                // 隐藏加载中
-                if(paymentLoading) paymentLoading.style.display = 'none';
-                
-                if (data.success) {
-                    // 保存订单ID
-                    currentOrderId = data.order_id;
+        // 不重新声明已存在的变量，只检查并在需要时更新
+        // 使用函数封装我们的修复，避免全局变量冲突
+        (function() {
+            // 检查支付功能
+            function fixPaymentFunctionality() {
+                // 找到并修正原始的createPaymentOrder函数
+                if (typeof window.createPaymentOrder === 'function') {
+                    // 保存原始函数的引用
+                    const originalCreatePaymentOrder = window.createPaymentOrder;
                     
-                    // 重要：先赋值给全局变量
-                    paymentInfo = data.payment_info;
-                    
-                    if (paymentInfo && paymentInfo.payment_type === 'form_redirect') {
-                        // 创建一个容器来放置表单HTML
-                        const formContainer = document.createElement('div');
-                        formContainer.style.display = 'none';
-                        formContainer.innerHTML = paymentInfo.redirect_form;
-                        document.body.appendChild(formContainer);
+                    // 替换为我们的修复版本
+                    window.createPaymentOrder = function(plan) {
+                        console.log("调用修复后的支付函数", plan);
                         
-                        // 显示支付处理信息
-                        if(paymentQrcode) {
-                            paymentQrcode.innerHTML = '<p>正在跳转到支付页面，请稍候...</p>';
-                        }
-                        
-                        // 延迟提交表单
-                        setTimeout(() => {
-                            try {
-                                const form = document.getElementById('payform');
-                                if (form) form.submit();
-                            } catch (e) {
-                                console.error('提交表单失败:', e);
-                                if(paymentQrcode) {
-                                    paymentQrcode.innerHTML = '<p>自动跳转失败，请<a href="' + 
-                                        paymentInfo.qr_code_url + '" target="_blank">点击此处</a>前往支付</p>';
+                        try {
+                            const phone = document.getElementById('phone').value;
+                            const password = document.getElementById('password').value;
+                            
+                            if (!phone) {
+                                alert('请先输入手机号');
+                                return;
+                            }
+                            
+                            // 配置数据
+                            let config = {};
+                            if (typeof collectFormData === 'function') {
+                                try {
+                                    config = collectFormData();
+                                } catch(e) {
+                                    console.error("收集表单数据错误:", e);
                                 }
                             }
-                        }, 1000);
-                    } else {
-                        // 处理二维码支付
-                        if (window.QRCode && paymentQrcode) {
-                            new QRCode(paymentQrcode, paymentInfo.qr_code_url);
+                            
+                            // 显示加载状态
+                            const paymentLoading = document.getElementById('payment-loading');
+                            const paymentQrcode = document.getElementById('qrcode') || document.getElementById('payment-qrcode');
+                            const paymentError = document.getElementById('paymentError');
+                            
+                            if (paymentLoading) paymentLoading.style.display = 'block';
+                            if (paymentError) paymentError.style.display = 'none';
+                            
+                            // 发送支付请求
+                            fetch('/api/payment/create-order', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    plan: plan,
+                                    phone: phone, 
+                                    password: password,
+                                    config: config
+                                })
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (paymentLoading) paymentLoading.style.display = 'none';
+                                
+                                if (data.success) {
+                                    // 不重新赋值全局变量，直接使用data中的值
+                                    if (window.currentOrderId !== undefined) {
+                                        window.currentOrderId = data.order_id;
+                                    }
+                                    
+                                    const info = data.payment_info;
+                                    
+                                    if (info && info.payment_type === 'form_redirect') {
+                                        // 处理表单重定向
+                                        const formContainer = document.createElement('div');
+                                        formContainer.style.display = 'none';
+                                        formContainer.innerHTML = info.redirect_form;
+                                        document.body.appendChild(formContainer);
+                                        
+                                        if (paymentQrcode) {
+                                            paymentQrcode.innerHTML = '<p>正在跳转到支付页面，请稍候...</p>';
+                                        }
+                                        
+                                        setTimeout(() => {
+                                            try {
+                                                const form = document.getElementById('payform');
+                                                if (form) form.submit();
+                                            } catch (e) {
+                                                console.error('提交表单失败:', e);
+                                                if (paymentQrcode) {
+                                                    paymentQrcode.innerHTML = 
+                                                        `<p>跳转失败，请<a href="${info.qr_code_url}" target="_blank">点击此处</a>前往支付</p>`;
+                                                }
+                                            }
+                                        }, 1000);
+                                    } else if (window.QRCode && paymentQrcode) {
+                                        // 处理二维码支付
+                                        new QRCode(paymentQrcode, info.qr_code_url);
+                                        if (document.getElementById('paymentStatus')) {
+                                            document.getElementById('paymentStatus').textContent = 
+                                                '请使用微信/支付宝扫描二维码支付...';
+                                        }
+                                    }
+                                } else {
+                                    // 显示错误
+                                    const errorMsg = data.message || '创建订单失败';
+                                    if (paymentError) {
+                                        paymentError.textContent = errorMsg;
+                                        paymentError.style.display = 'block';
+                                    } else {
+                                        alert(errorMsg);
+                                    }
+                                }
+                            })
+                            .catch(error => {
+                                if (paymentLoading) paymentLoading.style.display = 'none';
+                                
+                                const errorMsg = '创建订单时出错: ' + (error.message || '网络错误');
+                                if (paymentError) {
+                                    paymentError.textContent = errorMsg;
+                                    paymentError.style.display = 'block';
+                                } else if (paymentQrcode) {
+                                    paymentQrcode.innerHTML = '<p>' + errorMsg + '</p>';
+                                } else {
+                                    alert(errorMsg);
+                                }
+                            });
+                        } catch (e) {
+                            console.error("支付处理出错:", e);
+                            alert("支付处理发生错误: " + e.message);
                         }
-                    }
-                } else {
-                    // 显示错误信息
-                    if(paymentError) {
-                        paymentError.textContent = data.message || '创建订单失败';
-                        paymentError.style.display = 'block';
-                    } else {
-                        alert('创建订单失败: ' + (data.message || '未知错误'));
-                    }
+                    };
+                    
+                    console.log("支付函数已修复");
                 }
-            })
-            .catch(error => {
-                if(paymentLoading) paymentLoading.style.display = 'none';
-                
-                const errorMsg = '创建订单时出错: ' + (error.message || '网络错误');
-                
-                if(paymentError) {
-                    paymentError.textContent = errorMsg;
-                    paymentError.style.display = 'block';
-                } else if(paymentQrcode) {
-                    paymentQrcode.innerHTML = '<p>' + errorMsg + '</p>';
-                } else {
-                    alert(errorMsg);
-                }
-                
-                console.error('支付请求错误:', error);
-            });
-        }
-        
-        // 3. 确保不会干扰原有的注册按钮事件处理
-        // 页面加载完成后，只处理支付相关的元素，不干扰注册按钮
-        window.addEventListener('load', function() {
-            // 找到所有计划选择按钮并添加事件监听器
-            const planButtons = document.querySelectorAll('.plan-option');
-            
-            planButtons.forEach(button => {
-                button.addEventListener('click', function() {
-                    const plan = this.getAttribute('data-plan');
-                    if(plan) {
-                        // 移除其他选中状态
-                        planButtons.forEach(btn => btn.classList.remove('selected'));
-                        // 添加选中状态
-                        this.classList.add('selected');
-                        
-                        // 更新当前选择的计划
-                        currentPlan = plan;
-                    }
-                });
-            });
-            
-            // 找到确认支付按钮
-            const confirmButton = document.getElementById('confirmPaymentButton');
-            if(confirmButton) {
-                confirmButton.addEventListener('click', function() {
-                    if(currentPlan) {
-                        createPaymentOrder(currentPlan);
-                    } else {
-                        alert('请先选择一个订阅计划');
-                    }
-                });
             }
             
-            // 检查已有的按钮事件是否正常 - 不要覆盖原有的事件
-            console.log("支付处理代码已加载");
-        });
-
-        // 4. 手动检查注册按钮事件
-        const registerButton = document.getElementById('registerButton');
-        if(registerButton && !registerButton._hasClickListener) {
-            registerButton._hasClickListener = true;
-            registerButton.addEventListener('click', function() {
-                console.log("注册按钮被点击");
-                // 如果原有的注册函数存在，手动调用它
-                if(typeof handleRegister === 'function') {
-                    handleRegister();
-                } else {
-                    // 如果找不到原有的处理函数，提供一个临时的实现
+            // 修复注册按钮功能
+            function fixRegisterButton() {
+                const registerButton = document.getElementById('registerButton');
+                if (!registerButton) {
+                    console.log("未找到注册按钮");
+                    return;
+                }
+                
+                // 清除所有现有事件处理函数
+                const newButton = registerButton.cloneNode(true);
+                registerButton.parentNode.replaceChild(newButton, registerButton);
+                
+                // 添加新的事件处理
+                newButton.addEventListener('click', function() {
+                    console.log("注册按钮被点击");
+                    
                     const phone = document.getElementById('phone').value;
                     const password = document.getElementById('password').value;
                     
-                    if(!phone || !password) {
+                    if (!phone || !password) {
                         alert("请输入手机号和密码");
                         return;
                     }
                     
+                    // 显示加载状态
+                    newButton.disabled = true;
+                    newButton.innerText = "注册中...";
+                    
+                    // 发送注册请求
                     fetch('/api/auth/register', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -814,22 +797,42 @@
                     })
                     .then(response => response.json())
                     .then(data => {
-                        if(data.success) {
+                        newButton.disabled = false;
+                        newButton.innerText = "注册并配置";
+                        
+                        if (data.success) {
                             alert("注册成功！");
                             // 显示配置区域
                             const configSection = document.getElementById('configSection');
-                            if(configSection) configSection.style.display = 'block';
+                            if (configSection) configSection.style.display = 'block';
                         } else {
                             alert("注册失败: " + (data.message || "未知错误"));
                         }
                     })
                     .catch(error => {
+                        newButton.disabled = false;
+                        newButton.innerText = "注册并配置";
                         alert("注册请求失败，请稍后再试");
                         console.error("注册错误:", error);
                     });
-                }
+                });
+                
+                console.log("注册按钮已修复");
+            }
+            
+            // 等待页面完全加载
+            window.addEventListener('load', function() {
+                console.log("页面已加载，开始修复功能");
+                
+                // 修复支付功能
+                fixPaymentFunctionality();
+                
+                // 修复注册按钮
+                fixRegisterButton();
+                
+                console.log("功能修复完成");
             });
-        }
+        })();
 
     </script>
 </body>
