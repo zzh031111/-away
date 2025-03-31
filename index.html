@@ -944,12 +944,47 @@
             }
         }
 
-        // 在页面加载时获取价格
+        // 在页面加载函数中添加这段代码，检查支付成功回调
         document.addEventListener('DOMContentLoaded', function() {
-            // 获取最新价格
-            fetchPlanPrices();
+            // 检查URL参数是否包含支付成功标记
+            const urlParams = new URLSearchParams(window.location.search);
+            const paymentResult = urlParams.get('payment_result');
             
-            // 其他初始化代码...
+            if (paymentResult === 'success') {
+                // 显示支付成功提示
+                const successAlert = document.createElement('div');
+                successAlert.className = 'alert alert-success alert-dismissible fade show';
+                successAlert.innerHTML = `
+                    <strong>支付成功！</strong> 您的配置已保存，现在可以使用所有功能了。
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                `;
+                
+                // 插入到页面顶部
+                const container = document.querySelector('.container');
+                container.insertBefore(successAlert, container.firstChild);
+                
+                // 记录登录状态
+                const phone = sessionStorage.getItem('pendingPhone');
+                if (phone) {
+                    localStorage.setItem('loggedInUser', phone);
+                    
+                    // 主动检查用户状态，更新UI
+                    checkUserStatus();
+                }
+                
+                // 清除临时会话数据
+                sessionStorage.removeItem('pendingConfig');
+                sessionStorage.removeItem('pendingPhone'); 
+                sessionStorage.removeItem('pendingPassword');
+                sessionStorage.removeItem('pendingPlan');
+                sessionStorage.removeItem('currentOrderId');
+                
+                // 移除URL参数，避免刷新页面时重复显示成功消息
+                window.history.replaceState({}, document.title, '/');
+            }
+            
+            // 调用其他页面加载函数...
+            fetchPriceInfo();
         });
 
         // 修改前端保存配置按钮处理事件
@@ -1298,9 +1333,6 @@
                 console.error('获取价格信息失败:', error);
             }
         }
-        
-        // 页面加载后执行
-        document.addEventListener('DOMContentLoaded', fetchPriceInfo);
     </script>
 </body>
 </html> 
