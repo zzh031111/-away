@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>微信早安推送配置</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
     <style>
         body { padding-top: 20px; background-color: #f8f9fa; }
         .container { max-width: 700px; background-color: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
@@ -20,10 +21,70 @@
         .plan-option { border: 1px solid #ddd; padding: 15px; margin-bottom: 10px; border-radius: 5px; cursor: pointer; }
         .plan-option.selected { border-color: #0d6efd; background-color: #e7f1ff; }
         .plan-option h5 { margin-top: 0; }
+        .form-section {
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+            padding: 25px;
+            background-color: #fff;
+            margin-bottom: 30px;
+        }
+        
+        .form-section h3 {
+            color: #3a5a78;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #eaeaea;
+        }
+        
+        .form-label.required:after {
+            content: "*";
+            color: red;
+            margin-left: 4px;
+        }
+        
+        .btn-primary {
+            background-color: #3a5a78;
+            border-color: #3a5a78;
+        }
+        
+        .btn-info {
+            background-color: #5bc0de;
+            border-color: #5bc0de;
+            color: white;
+        }
+        
+        .alert-custom-success {
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        
+        .alert-custom-error {
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
+        <div class="alert alert-warning mb-4 border-left border-warning" style="border-left: 5px solid #ffc107; font-size: 1.1rem;">
+            <h4 class="alert-heading text-center mb-3"><i class="bi bi-exclamation-triangle-fill me-2"></i>重要使用说明</h4>
+            <p>使用前请务必阅读<a href="详细使用教程.html" class="alert-link" target="_blank">详细使用教程</a>，了解各项配置含义以及获取方法！</p>
+            <hr>
+            <ol class="mb-0">
+                <li>您需要<strong>先测试发送</strong>确认配置正确，再保存并订阅服务</li>
+                <li>订阅成功后，系统会<strong>每天自动发送</strong>天气、纪念日等信息</li>
+                <li>请确保填写的微信公众号信息准确无误，特别是<strong>AppID和AppSecret</strong></li>
+            </ol>
+        </div>
+
         <h2 class="text-center mb-4">微信早安晚安推送配置</h2>
 
         <!-- 使用前必看教程 -->
@@ -49,8 +110,8 @@
                 <button type="button" class="btn btn-secondary" id="logoutButton" style="display: none;">退出登录</button>
             </form>
             <div id="authMessage" class="alert mt-3" style="display: none;"></div>
-                </div>
-                
+        </div>
+        
         <!-- 配置区域 -->
         <div class="config-section" id="configSection">
             <h4>详细配置信息</h4>
@@ -62,48 +123,48 @@
                     <div class="col-md-6">
                         <label for="app_id" class="form-label required">微信公众号AppID</label>
                         <input type="text" class="form-control" id="app_id" name="app_id" required>
-                </div>
+                    </div>
                     <div class="col-md-6">
                         <label for="app_secret" class="form-label required">微信公众号AppSecret</label>
                         <input type="password" class="form-control" id="app_secret" name="app_secret" required>
-                </div>
+                    </div>
                 </div>
                 <div class="row mb-3">
                     <div class="col-md-6">
                         <label for="user_openid" class="form-label required">接收消息用户的OpenID</label>
                         <input type="text" class="form-control" id="user_openid" name="user_openid" required>
-                </div>
+                    </div>
                     <div class="col-md-6">
                         <label for="template_id" class="form-label required">早安模板ID</label>
                         <input type="text" class="form-control" id="template_id" name="template_id" required>
-                </div>
+                    </div>
                 </div>
                 <div class="row mb-3">
                     <div class="col-md-6">
-                        <label for="indices_template_id" class="form-label">晚安模板ID (可选)</label>
+                        <label for="indices_template_id" class="form-label">天气指数模板ID (可选)</label>
                         <input type="text" class="form-control" id="indices_template_id" name="indices_template_id">
                     </div>
                     <div class="col-md-6">
                         <label for="location_name" class="form-label required">天气查询-区县名</label>
                         <input type="text" class="form-control" id="location_name" name="location_name" required placeholder="例如: 朝阳区">
-                </div>
+                    </div>
                 </div>
                 <div class="row mb-3">
                     <div class="col-md-6">
                         <label for="adm_name" class="form-label required">天气查询-市/省名</label>
                         <input type="text" class="form-control" id="adm_name" name="adm_name" required placeholder="例如: 北京市 或 河北省">
                     </div>
-                            <div class="col-md-6">
-                        <label for="meet_date" class="form-label">相识纪念日 (可选)</label>
+                    <div class="col-md-6">
+                        <label for="meet_date" class="form-label">相爱纪念日 (可选)</label>
                         <input type="date" class="form-control" id="meet_date" name="meet_date">
-                                    </div>
-                                </div>
+                    </div>
+                </div>
                 <div class="row mb-3">
                     <div class="col-md-6">
                         <label for="partner_birthday" class="form-label">你的生日 (可选)</label>
                         <input type="date" class="form-control" id="partner_birthday" name="partner_birthday">
-                            </div>
-                            <div class="col-md-6">
+                    </div>
+                    <div class="col-md-6">
                         <label for="xiazhou_birthday" class="form-label">Ta的生日 (可选)</label>
                         <input type="date" class="form-control" id="xiazhou_birthday" name="xiazhou_birthday">
                     </div>
@@ -118,8 +179,8 @@
             <div id="successMessage" class="alert alert-success" style="display: none;"></div>
             <div id="errorMessage" class="alert alert-danger" style="display: none;"></div>
         </div>
-        </div>
-        
+    </div>
+    
     <!-- 支付模态框 -->
     <div class="modal fade" id="paymentModal" tabindex="-1" aria-labelledby="paymentModalLabel">
       <div class="modal-dialog">
@@ -151,7 +212,7 @@
             <button type="button" class="btn btn-primary" id="confirmPaymentButton" disabled>确认支付</button>
           </div>
         </div>
-        </div>
+      </div>
     </div>
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -165,9 +226,9 @@
         const saveConfigButton = document.getElementById('saveConfigButton');
         const testSendButton = document.getElementById('testSendButton');
         const authMessage = document.getElementById('authMessage');
-            const loadingMessage = document.getElementById('loadingMessage');
-            const successMessage = document.getElementById('successMessage');
-            const errorMessage = document.getElementById('errorMessage');
+        const loadingMessage = document.getElementById('loadingMessage');
+        const successMessage = document.getElementById('successMessage');
+        const errorMessage = document.getElementById('errorMessage');
         const configSection = document.getElementById('configSection');
         const userStatus = document.getElementById('userStatus');
         const paymentModalElement = document.getElementById('paymentModal');
@@ -453,19 +514,33 @@
         // 3. 添加详细的消息显示功能 - 支持多行和HTML内容
         function showDetailedMessage(element, title, details, type = 'info') {
             let alertClass = 'alert-info';
-            if (type === 'success') alertClass = 'alert-success';
-            if (type === 'error') alertClass = 'alert-danger';
-            if (type === 'warning') alertClass = 'alert-warning';
+            let iconClass = 'bi-info-circle-fill';
+            
+            if (type === 'success') {
+                alertClass = 'alert-custom-success';
+                iconClass = 'bi-check-circle-fill';
+            } else if (type === 'error') {
+                alertClass = 'alert-custom-error';
+                iconClass = 'bi-exclamation-circle-fill';
+            } else if (type === 'warning') {
+                alertClass = 'alert-warning';
+                iconClass = 'bi-exclamation-triangle-fill';
+            }
             
             element.innerHTML = `
-                <strong>${title}</strong>
+                <div class="d-flex align-items-center mb-2">
+                    <i class="bi ${iconClass} me-2" style="font-size: 1.5rem;"></i>
+                    <strong style="font-size: 1.2rem;">${title}</strong>
+                </div>
                 ${details ? `<div class="mt-2">${details}</div>` : ''}
             `;
             element.className = `alert ${alertClass}`;
             element.style.display = 'block';
             
             // 滚动到消息位置
-            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            setTimeout(() => {
+                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 100);
         }
 
         // 4. 改进测试发送按钮的处理
@@ -528,7 +603,12 @@
                     showDetailedMessage(
                         successMessage, 
                         '测试消息发送成功！', 
-                        `请确认您的微信是否收到测试消息。<br><br><strong>重要提示：</strong>测试成功后，请点击"保存配置"按钮并完成订阅，才能保存配置信息用于日常推送。`, 
+                        `<strong class="d-block mb-2" style="font-size: 1.1rem; color: #155724;">请确认您的微信是否收到测试消息。</strong>
+                         <div class="p-3 mb-2 bg-light border rounded">
+                             <strong class="d-block mb-1" style="color: #721c24;">下一步重要操作：</strong>
+                             测试成功后，请点击"保存配置"按钮并完成订阅，才能保存配置信息用于日常推送。
+                             <br>未订阅的配置无法保存，也不会自动推送消息。
+                         </div>`, 
                         'success'
                     );
                 } else {
