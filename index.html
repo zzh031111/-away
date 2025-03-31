@@ -203,11 +203,6 @@
                             <p class="mb-1">价格: <span class="price-annual">59.90</span>元/年</p>
                             <p class="mb-0 text-muted">比月付更划算，节省80%</p>
                         </div>
-                        <div class="plan-option" data-plan="permanent">
-                            <h5>永久订阅</h5>
-                            <p class="mb-1">价格: <span class="price-permanent">99.90</span>元</p>
-                            <p class="mb-0 text-muted">一次付费，永久使用</p>
-                        </div>
                     </div>
                     
                     <!-- 支付加载中状态 -->
@@ -940,15 +935,6 @@
                 `;
             }
             
-            // 如果有永久会员选项
-            const permanentOption = document.querySelector('.plan-option[data-plan="permanent"]');
-            if (permanentOption) {
-                permanentOption.querySelector('p').innerHTML = `
-                    价格：<strong>${planPrices.permanent}元</strong> (一次付费，永久使用)
-                    ${planPrices.discount ? `<span class="badge bg-danger ms-2">${planPrices.discount}</span>` : ''}
-                `;
-            }
-            
             // 更新价格更新时间
             if (planPrices.update_time) {
                 const priceUpdateInfo = document.getElementById('priceUpdateInfo');
@@ -1283,6 +1269,38 @@
                 }
             }, pollingInterval);
         }
+
+        // 在页面加载时获取最新价格信息
+        async function fetchPriceInfo() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/payment/prices`);
+                if (!response.ok) {
+                    throw new Error('获取价格信息失败');
+                }
+                
+                const result = await response.json();
+                console.log('最新价格信息:', result);
+                
+                if (result.success && result.data) {
+                    // 更新UI显示的价格
+                    document.querySelector('.price-monthly').textContent = result.data.monthly.toFixed(2);
+                    document.querySelector('.price-annual').textContent = result.data.annual.toFixed(2);
+                    
+                    // 如果有更新时间和折扣信息，也可以显示
+                    if (result.data.update_time) {
+                        const discountInfo = result.data.discount ? `(${result.data.discount})` : '';
+                        // 可以添加一个元素显示更新时间和折扣信息
+                        // document.getElementById('priceUpdateInfo').textContent = 
+                        //    `价格更新时间: ${result.data.update_time} ${discountInfo}`;
+                    }
+                }
+            } catch (error) {
+                console.error('获取价格信息失败:', error);
+            }
+        }
+        
+        // 页面加载后执行
+        document.addEventListener('DOMContentLoaded', fetchPriceInfo);
     </script>
 </body>
 </html> 
