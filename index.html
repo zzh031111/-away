@@ -630,35 +630,29 @@
         });
 
         // --- 初始化 ---
-        updateLoginStatus(); // 页面加载时检查登录状态
+        // updateLoginStatus(); // 暂时注释掉，以防它内部有问题
 
-        (function() { // IIFE 开始 - 确保所有相关函数都在这里面
+        (function() { // IIFE 开始 (1)
 
-            // *** collectFormData 函数必须放在 IIFE 内部 ***
-            // *** 并且在 handlePayment 函数之前定义 ***
-            function collectFormData() {
+            function collectFormData() { // collectFormData 开始 (2)
                 console.log("[collectFormData] 开始收集表单数据...");
-                const configData = {
-                    // 再次确认: 将下面的 'elementId' 替换为您表单中对应输入框的实际 ID
-                    app_id: document.getElementById('app_id')?.value || '', // 例如: id="app_id"
-                    app_secret: document.getElementById('app_secret')?.value || '', // 例如: id="app_secret"
-                    user_openid: document.getElementById('user_openid')?.value || '', // 例如: id="user_openid"
-                    template_id: document.getElementById('template_id')?.value || '', // 例如: id="template_id"
-                    // ... 其他字段 ...
+                const configData = { // configData 对象开始 (3)
+                    app_id: document.getElementById('app_id')?.value || '',
+                    app_secret: document.getElementById('app_secret')?.value || '',
+                    user_openid: document.getElementById('user_openid')?.value || '',
+                    template_id: document.getElementById('template_id')?.value || '',
                     location_name: document.getElementById('location_name')?.value || '',
                     adm_name: document.getElementById('adm_name')?.value || '',
                     meet_date: document.getElementById('meet_date')?.value || '',
                     partner_birthday: document.getElementById('partner_birthday')?.value || '',
                     xiazhou_birthday: document.getElementById('xiazhou_birthday')?.value || '',
-                };
+                }; // configData 对象结束 (3)
                 console.log("[collectFormData] 收集到的数据:", configData);
                 return configData;
-            }
+            } // collectFormData 结束 (2)
 
-            // 支付处理函数 (现在可以访问 collectFormData)
-            function handlePayment(plan) {
+            function handlePayment(plan) { // handlePayment 开始 (4)
                 console.log(`[handlePayment] 开始处理支付计划: ${plan}`);
-
                 const paymentErrorElement = document.getElementById('paymentError');
                 if (paymentErrorElement) {
                     paymentErrorElement.style.display = 'none';
@@ -669,7 +663,7 @@
 
                 let phone, password, config = {};
 
-                try {
+                try { // try 开始 (5)
                     // 获取用户输入
                     phone = document.getElementById('phone').value;
                     password = document.getElementById('password').value;
@@ -682,15 +676,14 @@
                     }
 
                     // --- 现在应该能找到 collectFormData 了 ---
-                    if (typeof collectFormData === 'function') {
-                        config = collectFormData(); // 调用函数
+                    if (typeof collectFormData === 'function') { // if 开始 (6)
+                        config = collectFormData();
                         console.log("[handlePayment] 配置数据已收集:", config);
-                    } else {
-                         // 如果还报这个错，说明放置位置仍然不对
+                    } else { // else 开始 (6)
                          console.error("[handlePayment] collectFormData 函数仍然未找到!");
                          alert('内部错误：无法收集配置数据。');
                          return;
-                    }
+                    } // if/else 结束 (6)
 
                     // 验证配置
                     if (!config.app_id || !config.app_secret) {
@@ -700,7 +693,7 @@
                     }
                      console.log("[handlePayment] 输入和配置验证成功。");
 
-                } catch (error) {
+                } catch (error) { // catch 开始 (5)
                     console.error("[handlePayment] 获取输入或配置时出错:", error);
                     if (paymentErrorElement) {
                         paymentErrorElement.textContent = '读取输入或配置时出错: ' + error.message;
@@ -709,76 +702,97 @@
                         alert('读取输入或配置时出错: ' + error.message);
                     }
                     return;
-                }
+                } // try/catch 结束 (5)
 
                 console.log("[handlePayment] 正在发送 fetch 请求创建订单...");
-                // ... fetch 请求和后续处理保持不变 ...
-                fetch('https://1337331310-2gg2yrldrk.ap-beijing.tencentscf.com/api/payment/create-order', {
-                    // ... fetch options ...
-                })
-                .then(response => {
-                    // ... response handling ...
-                })
-                .then(data => {
-                    // ... data handling ...
-                     if (data && data.success) {
-                         if (data.payment_info && data.payment_info.redirect_form) {
-                            // ... form redirect logic ...
-                         } else {
+                fetch('https://1337331310-2gg2yrldrk.ap-beijing.tencentscf.com/api/payment/create-order', { // fetch options 开始 (7)
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        plan: plan,
+                        config: config,
+                        phone: phone,
+                        password: password
+                    }),
+                }) // fetch options 结束 (7)
+                .then(response => { // then 1 开始 (8)
+                    console.log(`[handlePayment] Fetch 响应状态: ${response.status}`);
+                    if (!response.ok) { // if 开始 (9)
+                        throw new Error(`HTTP 错误 ${response.status}`);
+                    } // if 结束 (9)
+                    return response.json();
+                }) // then 1 结束 (8)
+                .then(data => { // then 2 开始 (10)
+                     console.log("[handlePayment] Fetch 响应数据已接收:", data);
+                     if (data && data.success) { // if 开始 (11)
+                         if (data.payment_info && data.payment_info.redirect_form) { // if 开始 (12)
+                            const formContainer = document.createElement('div');
+                            formContainer.style.display = 'none';
+                            formContainer.innerHTML = data.payment_info.redirect_form;
+                            document.body.appendChild(formContainer);
+                            setTimeout(() => { // setTimeout callback 开始 (13)
+                                const form = document.getElementById('payform');
+                                if (form) { // if 开始 (14)
+                                    form.submit();
+                                } else { // else 开始 (14)
+                                    if (data.payment_info.qr_code_url) { // if 开始 (15)
+                                        window.location.href = data.payment_info.qr_code_url;
+                                    } else { // else 开始 (15)
+                                         console.error("[handlePayment] 未找到备用支付 URL!");
+                                         alert("支付表单提交失败，且无备用支付链接。");
+                                    } // if/else 结束 (15)
+                                } // if/else 结束 (14)
+                            }, 100); // setTimeout callback 结束 (13)
+                         } else { // else 开始 (12)
                              console.error("[handlePayment] 成功响应中缺少支付信息或重定向表单:", data.payment_info);
                              throw new Error("从服务器返回的支付信息不完整，无法继续。");
-                         }
-                     } else {
+                         } // if/else 结束 (12)
+                     } else { // else 开始 (11)
                         throw new Error(data && data.message ? data.message : '创建订单失败');
-                     }
-                })
-                .catch(error => {
-                    // ... error handling ...
+                     } // if/else 结束 (11)
+                }) // then 2 结束 (10)
+                .catch(error => { // catch 开始 (16)
                     console.error('[handlePayment] Fetch 或处理过程中出错:', error);
-                    if (paymentErrorElement) {
-                        paymentErrorElement.textContent = '创建订单时出错: ' + error.message; // 显示错误
+                    if (paymentErrorElement) { // if 开始 (17)
+                        paymentErrorElement.textContent = '创建订单时出错: ' + error.message;
                         paymentErrorElement.style.display = 'block';
-                    } else {
+                    } else { // else 开始 (17)
                         alert('创建订单时出错: ' + error.message);
-                    }
-                });
-            }
+                    } // if/else 结束 (17)
+                }); // catch 结束 (16) , fetch 调用结束
+            } // handlePayment 结束 (4)
 
-            // 页面加载完成后设置事件监听
-            document.addEventListener('DOMContentLoaded', function() {
+            document.addEventListener('DOMContentLoaded', function() { // DOMContentLoaded listener 开始 (18)
                 console.log('[DOMContentLoaded] 正在设置支付按钮监听器。');
                 const monthlyBtn = document.querySelector('[data-plan="monthly"]');
-                const yearlyBtn = document.querySelector('[data-plan="annual"]'); // 确保这个选择器正确
+                const yearlyBtn = document.querySelector('[data-plan="annual"]');
 
-                if (monthlyBtn) {
-                    monthlyBtn.addEventListener('click', (event) => {
+                if (monthlyBtn) { // if 开始 (19)
+                    monthlyBtn.addEventListener('click', (event) => { // listener callback 开始 (20)
                         event.preventDefault();
                         console.log('[DOMContentLoaded] 月度按钮被点击。');
                         handlePayment('monthly');
-                    });
+                    }); // listener callback 结束 (20)
                      console.log('[DOMContentLoaded] 月度按钮监听器已附加。');
-                } else {
+                } else { // else 开始 (19)
                      console.warn('[DOMContentLoaded] 未找到月度按钮 [data-plan="monthly"]。');
-                }
+                } // if/else 结束 (19)
 
-                if (yearlyBtn) {
-                     // --- 重要：确认年度按钮的选择器和计划名称 ---
-                     // 检查您的 HTML，年度按钮的 data-plan 属性值是什么？
-                     // 如果是 'yearly' 或其他值，请修改下面的 'annual'
-                    yearlyBtn.addEventListener('click', (event) => {
+                if (yearlyBtn) { // if 开始 (21)
+                    yearlyBtn.addEventListener('click', (event) => { // listener callback 开始 (22)
                         event.preventDefault();
                         console.log('[DOMContentLoaded] 年度按钮被点击。');
-                        handlePayment('annual'); // 确保 'annual' 是正确的计划标识符
-                    });
+                        handlePayment('annual');
+                    }); // listener callback 结束 (22)
                      console.log('[DOMContentLoaded] 年度按钮监听器已附加。');
-                } else {
-                     console.warn('[DOMContentLoaded] 未找到年度按钮 [data-plan="annual"]。'); // 确认选择器
-                }
-
-                // ... (移除或保留关闭按钮代码) ...
+                } else { // else 开始 (21)
+                     console.warn('[DOMContentLoaded] 未找到年度按钮 [data-plan="annual"]。');
+                } // if/else 结束 (21)
 
                 console.log('[DOMContentLoaded] 支付处理设置完成。');
-            });
+            }); // DOMContentLoaded listener 结束 (18)
 
         })(); // IIFE 结束
 
