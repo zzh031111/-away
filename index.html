@@ -121,7 +121,7 @@
     </div>
     
     <!-- 支付模态框 -->
-    <div class="modal fade" id="paymentModal" tabindex="-1" aria-labelledby="paymentModalLabel" aria-hidden="true">
+    <div class="modal fade" id="paymentModal" tabindex="-1" aria-labelledby="paymentModalLabel">
       <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-header">
@@ -602,168 +602,35 @@
             stopPaymentPolling();
         });
 
+        // 初始化Bootstrap模态框
+        document.addEventListener('DOMContentLoaded', function() {
+            const paymentModalEl = document.getElementById('paymentModal');
+            if (paymentModalEl) {
+                const paymentModal = new bootstrap.Modal(paymentModalEl, {
+                    backdrop: 'static',  // 不允许点击背景关闭
+                    keyboard: false      // 不允许按ESC关闭
+                });
+                
+                // 修改现有的显示模态框的代码
+                window.showPaymentModal = function() {
+                    paymentModal.show();
+                };
+                
+                // 模态框关闭后的清理
+                paymentModalEl.addEventListener('hidden.bs.modal', function() {
+                    // 清理支付状态
+                    if (document.getElementById('paymentQrcode')) {
+                        document.getElementById('paymentQrcode').innerHTML = '';
+                    }
+                    if (document.getElementById('paymentError')) {
+                        document.getElementById('paymentError').style.display = 'none';
+                    }
+                });
+            }
+        });
 
         // --- 初始化 ---
         updateLoginStatus(); // 页面加载时检查登录状态
-
-        // 创建订单并处理支付请求
-        function createPaymentOrder(plan) {
-            const phone = document.getElementById('phone').value;
-            if (!phone) {
-                alert('请先输入手机号');
-                return;
-            }
-            
-            // 显示加载中
-            document.getElementById('payment-loading').style.display = 'block';
-            document.getElementById('payment-qrcode').innerHTML = '';
-            
-            // 发送请求创建支付订单
-            fetch('/api/payment/create-order', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    plan: plan,
-                    phone: phone
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                // 隐藏加载中
-                document.getElementById('payment-loading').style.display = 'none';
-                
-                if (data.success) {
-                    // 处理支付信息
-                    const paymentInfo = data.payment_info;
-                    
-                    // 检查是否是表单重定向类型
-                    if (paymentInfo.payment_type === 'form_redirect') {
-                        // 创建一个容器来放置表单HTML
-                        const formContainer = document.createElement('div');
-                        formContainer.style.display = 'none'; // 隐藏起来，因为表单会自动提交
-                        formContainer.innerHTML = paymentInfo.redirect_form;
-                        document.body.appendChild(formContainer);
-                        
-                        // 显示支付处理信息
-                        document.getElementById('payment-qrcode').innerHTML = 
-                            '<p>正在跳转到支付页面，请稍候...</p>';
-                        
-                        // 如果表单没有自动提交，可以手动触发
-                        setTimeout(() => {
-                            try {
-                                const form = document.getElementById('payform');
-                                if (form) form.submit();
-                            } catch (e) {
-                                console.error('提交表单失败:', e);
-                                // 提供支付链接作为备选
-                                document.getElementById('payment-qrcode').innerHTML = 
-                                    '<p>自动跳转失败，请<a href="' + paymentInfo.qr_code_url + 
-                                    '" target="_blank">点击此处</a>前往支付</p>';
-                            }
-                        }, 1000);
-                    } else {
-                        // 原始的二维码处理逻辑
-                        document.getElementById('payment-qrcode').innerHTML = ''; // 清空之前的内容
-                        new QRCode(document.getElementById('payment-qrcode'), paymentInfo.qr_code_url);
-                        
-                        // 开始轮询支付状态
-                        startPaymentPolling(data.order_id);
-                    }
-                    
-                    // 显示支付模态框
-                    document.getElementById('paymentModal').style.display = 'block';
-                } else {
-                    alert('创建订单失败: ' + data.message);
-                }
-            })
-            .catch(error => {
-                document.getElementById('payment-loading').style.display = 'none';
-                document.getElementById('payment-qrcode').innerHTML = 
-                    '<p>创建订单时出错: ' + error.message + '</p>';
-            });
-        }
-
-        // 处理支付请求
-        async function handlePaymentRequest(plan) {
-            const phone = document.getElementById('phone').value;
-            const password = document.getElementById('password').value;
-            const config = collectFormData();
-            
-            if (!phone) {
-                showMessage(paymentError, '请先输入手机号', false);
-                return;
-            }
-            
-            paymentError.style.display = 'none';
-            paymentLoading.style.display = 'block';
-            paymentQrcode.innerHTML = '';
-            currentPlan = plan;
-            
-            try {
-                // 记录当前订单所需信息
-                const payload = {
-                    plan: plan,
-                    phone: phone,
-                    password: password,
-                    config: config
-                };
-                
-                const result = await apiCall('/api/payment/create-order', 'POST', payload);
-                
-                paymentLoading.style.display = 'none';
-                
-                if (result.success) {
-                    currentOrderId = result.order_id;
-                    
-                    // 先定义变量再使用它
-                    const paymentInfo = result.payment_info;
-                    
-                    // 根据支付类型处理
-                    if (paymentInfo.payment_type === 'form_redirect') {
-                        // 创建表单重定向
-                        const formContainer = document.createElement('div');
-                        formContainer.style.display = 'none';
-                        formContainer.innerHTML = paymentInfo.redirect_form;
-                        document.body.appendChild(formContainer);
-                        
-                        paymentQrcode.innerHTML = '<p>正在跳转到支付页面，请稍候...</p>';
-                        
-                        // 自动提交表单
-                        setTimeout(() => {
-                            try {
-                                const form = document.getElementById('payform');
-                                if (form) form.submit();
-                            } catch (e) {
-                                console.error('提交表单失败:', e);
-                                paymentQrcode.innerHTML = '<p>跳转失败，请<a href="' + 
-                                    paymentInfo.qr_code_url + '" target="_blank">点击此处</a>前往支付</p>';
-                            }
-                        }, 1000);
-                    } else {
-                        // 处理二维码
-                        new QRCode(qrcodeContainer, {
-                            text: paymentInfo.qr_code_url,
-                            width: 128,
-                            height: 128,
-                        });
-                        paymentStatus.textContent = '请使用微信/支付宝扫描二维码支付...';
-                    }
-                    
-                    // 开始轮询支付状态
-                    startPaymentPolling(result.order_id);
-                } else {
-                    paymentError.textContent = result.message || '创建支付订单失败。';
-                    paymentError.style.display = 'block';
-                }
-            } catch (error) {
-                paymentLoading.style.display = 'none';
-                paymentError.textContent = '网络错误，请稍后再试。';
-                paymentError.style.display = 'block';
-                console.error('支付请求错误:', error);
-            }
-        }
 
     </script>
 </body>
