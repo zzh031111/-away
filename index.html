@@ -49,8 +49,8 @@
                 <button type="button" class="btn btn-secondary" id="logoutButton" style="display: none;">退出登录</button>
             </form>
             <div id="authMessage" class="alert mt-3" style="display: none;"></div>
-                </div>
-                
+        </div>
+        
         <!-- 配置区域 -->
         <div class="config-section" id="configSection">
             <h4>详细配置信息</h4>
@@ -62,23 +62,23 @@
                     <div class="col-md-6">
                         <label for="app_id" class="form-label required">微信公众号AppID</label>
                         <input type="text" class="form-control" id="app_id" name="app_id" required>
-                </div>
+                    </div>
                     <div class="col-md-6">
                         <label for="app_secret" class="form-label required">微信公众号AppSecret</label>
                         <input type="password" class="form-control" id="app_secret" name="app_secret" required>
-                </div>
+                    </div>
                 </div>
                 <div class="row mb-3">
                     <div class="col-md-6">
                         <label for="user_openid" class="form-label required">接收消息用户的OpenID</label>
                         <input type="text" class="form-control" id="user_openid" name="user_openid" required>
-                </div>
-                     <div class="col-md-6">
+                    </div>
+                    <div class="col-md-6">
                         <label for="template_id" class="form-label required">早安模板ID</label>
                         <input type="text" class="form-control" id="template_id" name="template_id" required>
+                    </div>
                 </div>
-                </div>
-                 <div class="row mb-3">
+                <div class="row mb-3">
                     <div class="col-md-6">
                         <label for="indices_template_id" class="form-label">晚安模板ID (可选)</label>
                         <input type="text" class="form-control" id="indices_template_id" name="indices_template_id">
@@ -86,24 +86,24 @@
                     <div class="col-md-6">
                         <label for="location_name" class="form-label required">天气查询-区县名</label>
                         <input type="text" class="form-control" id="location_name" name="location_name" required placeholder="例如: 朝阳区">
+                    </div>
                 </div>
-                </div>
-                 <div class="row mb-3">
+                <div class="row mb-3">
                     <div class="col-md-6">
                         <label for="adm_name" class="form-label required">天气查询-市/省名</label>
                         <input type="text" class="form-control" id="adm_name" name="adm_name" required placeholder="例如: 北京市 或 河北省">
                     </div>
-                            <div class="col-md-6">
+                    <div class="col-md-6">
                         <label for="meet_date" class="form-label">相识纪念日 (可选)</label>
                         <input type="date" class="form-control" id="meet_date" name="meet_date">
-                                    </div>
-                                </div>
+                    </div>
+                </div>
                 <div class="row mb-3">
                     <div class="col-md-6">
                         <label for="partner_birthday" class="form-label">你的生日 (可选)</label>
                         <input type="date" class="form-control" id="partner_birthday" name="partner_birthday">
-                            </div>
-                            <div class="col-md-6">
+                    </div>
+                    <div class="col-md-6">
                         <label for="xiazhou_birthday" class="form-label">Ta的生日 (可选)</label>
                         <input type="date" class="form-control" id="xiazhou_birthday" name="xiazhou_birthday">
                     </div>
@@ -118,8 +118,8 @@
             <div id="successMessage" class="alert alert-success" style="display: none;"></div>
             <div id="errorMessage" class="alert alert-danger" style="display: none;"></div>
         </div>
-        </div>
-        
+    </div>
+    
     <!-- 支付模态框 -->
     <div class="modal fade" id="paymentModal" tabindex="-1" aria-labelledby="paymentModalLabel" aria-hidden="true">
       <div class="modal-dialog">
@@ -151,7 +151,7 @@
             <button type="button" class="btn btn-primary" id="confirmPaymentButton" disabled>确认支付</button>
           </div>
         </div>
-        </div>
+      </div>
     </div>
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -165,9 +165,9 @@
         const saveConfigButton = document.getElementById('saveConfigButton');
         const testSendButton = document.getElementById('testSendButton');
         const authMessage = document.getElementById('authMessage');
-            const loadingMessage = document.getElementById('loadingMessage');
-            const successMessage = document.getElementById('successMessage');
-            const errorMessage = document.getElementById('errorMessage');
+        const loadingMessage = document.getElementById('loadingMessage');
+        const successMessage = document.getElementById('successMessage');
+        const errorMessage = document.getElementById('errorMessage');
         const configSection = document.getElementById('configSection');
         const userStatus = document.getElementById('userStatus');
         const paymentModalElement = document.getElementById('paymentModal');
