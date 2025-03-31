@@ -929,7 +929,7 @@
             // 其他初始化代码...
         });
 
-        // 完整的保存配置按钮处理程序
+        // 保存配置按钮点击事件
         saveConfigButton.addEventListener('click', async function() {
             clearMessages();
             
@@ -990,7 +990,7 @@
                     );
                 }
             } else {
-                // 新用户 - 需要显示支付页面
+                // 新用户 - 显示支付页面
                 // 获取用户输入的手机号和密码
                 const phone = document.getElementById('phone').value.trim();
                 const password = document.getElementById('password').value.trim();
