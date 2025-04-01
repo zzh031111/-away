@@ -330,9 +330,9 @@
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // 修改这里的API基础URL，确保指向正确的云函数地址
-        const API_BASE_URL = 'https://service-1337331310-2ee2vrldr.sc.run.tcloudbase.com'; // 修改为您的实际云函数URL
-        const MORNING_GREETING_URL = 'https://service-1337331310-2ee2vrldr.sc.run.tcloudbase.com/morning_greeting'; // 修改为您的实际API地址
+        // 使用实际的云函数URL
+        const API_BASE_URL = 'https://1337331310-2gg2yrldrk.ap-beijing.tencentscf.com'; // 微信配置云函数 
+        const MORNING_GREETING_URL = 'https://1337331310-kko6t1lktu.ap-beijing.tencentscf.com'; // 早安问候云函数
         
         // DOM元素
         const configForm = document.getElementById('configForm');
@@ -348,7 +348,7 @@
         
         // 页面加载完成后执行
         document.addEventListener('DOMContentLoaded', function() {
-            // 获取价格信息
+            // 从API获取价格信息
             fetchPriceInfo();
             
             // 显示配置部分
@@ -445,6 +445,48 @@
                 window.history.replaceState({}, document.title, window.location.pathname);
             }
         });
+        
+        // 恢复价格获取函数
+        function fetchPriceInfo() {
+            console.log('正在获取价格信息，API地址:', `${API_BASE_URL}/api/price`);
+            
+            fetch(`${API_BASE_URL}/api/price`)
+                .then(response => {
+                    console.log('价格API响应状态:', response.status);
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('获取到的价格数据:', data);
+                    // 更新模态框中的价格显示
+                    document.getElementById('modalPriceMonthly').textContent = data.monthly;
+                    document.getElementById('modalPriceAnnual').textContent = data.annual;
+                    document.getElementById('modalPriceDual').textContent = data.dual;
+                    
+                    // 计算月付年付的差价
+                    const monthlyPrice = parseFloat(data.monthly);
+                    const annualPrice = parseFloat(data.annual);
+                    const savingMonths = Math.round((monthlyPrice * 12 - annualPrice) / monthlyPrice);
+                    
+                    document.getElementById('modalDiscountMonthly').textContent = savingMonths;
+                })
+                .catch(error => {
+                    console.error('获取价格信息失败，使用默认价格:', error);
+                    // 使用默认价格
+                    const defaultPrices = {
+                        monthly: 1,
+                        annual: 2,
+                        dual: 52
+                    };
+                    // 更新模态框中的价格显示
+                    document.getElementById('modalPriceMonthly').textContent = defaultPrices.monthly;
+                    document.getElementById('modalPriceAnnual').textContent = defaultPrices.annual;
+                    document.getElementById('modalPriceDual').textContent = defaultPrices.dual;
+                    
+                    // 计算月付年付的差价
+                    const savingMonths = Math.round((defaultPrices.monthly * 12 - defaultPrices.annual) / defaultPrices.monthly);
+                    document.getElementById('modalDiscountMonthly').textContent = savingMonths;
+                });
+        }
         
         // 显示支付模态框
         function showPaymentModal(phone, password, config) {
@@ -600,39 +642,6 @@
             sessionStorage.removeItem('self_openid');
             sessionStorage.removeItem('user_location_name');
             sessionStorage.removeItem('user_adm_name');
-        }
-        
-        // 获取价格信息
-        function fetchPriceInfo() {
-            // 尝试从API获取
-            fetch(`${API_BASE_URL}/api/price`)
-                .then(response => response.json())
-                .then(data => {
-                    updatePriceDisplay(data);
-                })
-                .catch(error => {
-                    console.error('获取价格信息失败，使用默认价格:', error);
-                    // 使用默认价格
-                    const defaultPrices = {
-                        monthly: 1,
-                        annual: 2,
-                        dual: 52
-                    };
-                    updatePriceDisplay(defaultPrices);
-                });
-        }
-        
-        function updatePriceDisplay(data) {
-            document.getElementById('modalPriceMonthly').textContent = data.monthly;
-            document.getElementById('modalPriceAnnual').textContent = data.annual;
-            document.getElementById('modalPriceDual').textContent = data.dual;
-            
-            // 计算月付年付的差价
-            const monthlyPrice = parseFloat(data.monthly);
-            const annualPrice = parseFloat(data.annual);
-            const savingMonths = Math.round((monthlyPrice * 12 - annualPrice) / monthlyPrice);
-            
-            document.getElementById('modalDiscountMonthly').textContent = savingMonths;
         }
         
         // 收集配置信息
