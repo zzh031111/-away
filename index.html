@@ -461,7 +461,7 @@
                 sessionStorage.setItem('pendingConfig', JSON.stringify(config));
                 sessionStorage.setItem('pendingPlan', selectedPlan);
                 
-                // 创建订单
+                // 创建订单 - 这里需要使用createOrder而不是processPurchase
                 createOrder(phone, selectedPlan);
             });
             
@@ -495,6 +495,12 @@
                 
                 // 移除URL参数
                 window.history.replaceState({}, document.title, window.location.pathname);
+            }
+            
+            // 页面加载时设置双人套餐价格为52
+            const dualPriceElement = document.getElementById('modalPriceDual');
+            if (dualPriceElement) {
+                dualPriceElement.textContent = '52';
             }
         });
         
@@ -563,87 +569,8 @@
         
         // 处理购买流程
         function processPurchase(phone, password, config, plan) {
-            // 获取当前显示的价格
-            let price;
-            if (plan === 'monthly') {
-                price = document.getElementById('modalPriceMonthly').textContent;
-            } else if (plan === 'annual') {
-                price = document.getElementById('modalPriceAnnual').textContent;
-            } else if (plan === 'dual') {
-                price = document.getElementById('modalPriceDual').textContent;
-            }
-            
-            console.log(`创建订单: 套餐=${plan}, 价格=${price}`);
-            
-            // 隐藏套餐选择，显示加载中
-            document.getElementById('planSelection').style.display = 'none';
-            document.getElementById('modalUserConfigSection').style.display = 'none';
-            document.getElementById('paymentLoading').style.display = 'block';
-            confirmPaymentButton.style.display = 'none';
-            
-            // 创建订单
-            fetch(`${API_BASE_URL}/api/payment/create`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    phone: phone,
-                    password: password,
-                    plan: plan,
-                    config: config
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById('paymentLoading').style.display = 'none';
-                
-                if (data.success) {
-                    // 保存订单信息
-                    sessionStorage.setItem('currentOrderId', data.order_id);
-                    sessionStorage.setItem('pendingConfig', JSON.stringify(config));
-                    sessionStorage.setItem('pendingPhone', phone);
-                    sessionStorage.setItem('pendingPassword', password);
-                    sessionStorage.setItem('pendingPlan', plan);
-                    
-                    // 处理支付信息
-                    if (data.payment_info.payment_type === 'qrcode') {
-                        // 显示二维码
-                        document.getElementById('qrCodeImage').src = data.payment_info.qr_code_url;
-                        document.getElementById('qrCodeContainer').style.display = 'block';
-                        paymentCompleteButton.style.display = 'inline-block';
-                    } else if (data.payment_info.payment_type === 'form_redirect') {
-                        // 创建并提交表单
-                        const formContainer = document.createElement('div');
-                        formContainer.innerHTML = data.payment_info.redirect_form;
-                        document.body.appendChild(formContainer);
-                        
-                        // 关闭模态框
-                        paymentModal.hide();
-                        
-                        // 自动提交表单
-                        const form = formContainer.querySelector('form');
-                        if (form) {
-                            form.submit();
-                        }
-                    } else if (data.payment_info.payment_type === 'redirect') {
-                        // 跳转到支付页面
-                        window.location.href = data.payment_info.redirect_url;
-                    }
-                } else {
-                    alert(data.message || '创建订单失败');
-                    
-                    // 重新显示套餐选择
-                    document.getElementById('planSelection').style.display = 'block';
-                    confirmPaymentButton.style.display = 'inline-block';
-                }
-            })
-            .catch(error => {
-                console.error('创建订单失败:', error);
-                alert('创建订单失败，请稍后再试');
-                
-                document.getElementById('paymentLoading').style.display = 'none';
-                document.getElementById('planSelection').style.display = 'block';
-                confirmPaymentButton.style.display = 'inline-block';
-            });
+            // 直接调用新的createOrder函数
+            createOrder(phone, plan);
         }
         
         // 检查订单状态
@@ -854,8 +781,8 @@
             // 生成订单并存储信息
             sessionStorage.setItem('pendingPlan', plan);
             
-            // 调用API创建订单
-            fetch(`${API_BASE_URL}/api/payment/create-order`, {
+            // 调用API创建订单 - 修改API路径
+            fetch(`${API_BASE_URL}/api/payment/create`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
