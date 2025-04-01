@@ -282,7 +282,7 @@
                                 </div>
                             </div>
                         </div>
-                        
+
                         <div class="card mb-3">
                             <div class="card-body">
                                 <div class="form-check">
@@ -383,6 +383,9 @@
             console.log('[INFO] 页面加载完成');
             
             try {
+                // 检查支付状态
+                checkPaymentReturnStatus();
+                
                 // 检查价格信息
                 if (typeof fetchPrices === 'function') {
                     fetchPrices();
@@ -390,272 +393,239 @@
                     console.error('[ERROR] fetchPrices函数未定义');
                 }
                 
-                // 检查URL参数判断是否支付完成返回
-                if (typeof checkPaymentReturnStatus === 'function') {
-                    checkPaymentReturnStatus();
-                } else {
-                    console.error('[ERROR] checkPaymentReturnStatus函数未定义');
-                }
-            } catch (e) {
-                console.error('[ERROR] 页面初始化错误:', e);
-            }
-            
-            // 如果API_BASE_URL未定义或为空，使用默认值
-            if (!window.API_BASE_URL) {
-                window.API_BASE_URL = 'https://1387331310-2gg2yrldkk.ap-beijing.tencentscf.com';
-                console.log('API_BASE_URL未定义，使用默认值:', API_BASE_URL);
-            }
-            
-            // 测试API连接
-            fetch(`${API_BASE_URL}/api/price`, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            })
-            .then(response => {
-                console.log('测试API连接状态:', response.status);
-                if (response.ok) {
-                    console.log('API连接正常');
-                } else {
-                    console.warn('API连接异常，状态码:', response.status);
-                }
-            })
-            .catch(error => {
-                console.error('API连接测试失败:', error);
-            });
-            
-            // 从API获取最新价格
-            fetch(`${API_BASE_URL}/api/price`)
-                .then(response => response.json())
-                .then(data => {
-                    console.log('[INFO] 从API获取的价格:', data);
-                    // 确认返回的数据格式正确
-                    if (data && typeof data === 'object') {
-                        updatePricesInDOM(data);
+                // 测试API连接
+                fetch(`${API_BASE_URL}/api/price`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => {
+                    console.log('测试API连接状态:', response.status);
+                    if (response.ok) {
+                        console.log('API连接正常');
+                    } else {
+                        console.warn('API连接异常，状态码:', response.status);
                     }
                 })
                 .catch(error => {
-                    console.error('[ERROR] 获取价格失败:', error);
+                    console.error('API连接测试失败:', error);
                 });
-            
-            // 显示配置部分
-            configSection.style.display = 'block';
-            
-            // 测试发送给伴侣按钮点击事件
-            testButton.addEventListener('click', function() {
-                const config = collectConfigData();
-                if (validateConfig(config)) {
-                    sendTestMessage(config, false);
-                }
-            });
-            
-            // 测试发送给自己按钮点击事件
-            document.getElementById('testSelfButton').addEventListener('click', function() {
-                const partnerConfig = collectConfigData();
-                const userConfig = collectUserConfigData(partnerConfig);
                 
-                if (validateUserConfig(userConfig)) {
-                    sendTestMessage(userConfig, true);
-                }
-            });
-            
-            // 保存配置按钮点击事件
-            saveButton.addEventListener('click', function() {
-                // 获取用户信息和配置
-                const phone = document.getElementById('phone').value;
-                const password = document.getElementById('password').value;
-                const config = collectConfigData();
+                // 从API获取最新价格
+                fetch(`${API_BASE_URL}/api/price`)
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log('[INFO] 从API获取的价格:', data);
+                        // 确认返回的数据格式正确
+                        if (data && typeof data === 'object') {
+                            updatePricesInDOM(data);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('[ERROR] 获取价格失败:', error);
+                    });
                 
-                if (!phone || !password) {
-                    alert('请填写手机号和密码');
-                    return;
-                }
+                // 显示配置部分
+                configSection.style.display = 'block';
                 
-                if (!validateConfig(config)) {
-                    return;
-                }
-                
-                // 保存用户本人配置以备后用
-                const userConfig = collectUserConfigData(config);
-                
-                // 保存临时信息
-                sessionStorage.setItem('pendingPhone', phone);
-                sessionStorage.setItem('pendingPassword', password);
-                sessionStorage.setItem('pendingConfig', JSON.stringify(config));
-                sessionStorage.setItem('pendingUserConfig', JSON.stringify(userConfig));
-                
-                // 显示套餐选择模态框
-                showPaymentModal();
-            });
-            
-            // 确认订阅按钮点击事件
-            document.getElementById('confirmPaymentButton').addEventListener('click', function() {
-                try {
-                    console.log('[INFO] 确认订阅按钮被点击');
-                    
-                    // 获取选中的套餐
-                    const selectedPlanElement = document.querySelector('input[name="modal-plan"]:checked');
-                    if (!selectedPlanElement) {
-                        alert('请选择一个套餐');
-                        return;
-                    }
-                    
-                    const selectedPlan = selectedPlanElement.value;
-                    console.log('[INFO] 选择的套餐:', selectedPlan);
-                    
-                    // 从页面中获取手机号
-                    const phoneElement = document.getElementById('phone');
-                    if (!phoneElement || !phoneElement.value) {
-                        alert('请填写手机号');
-                        return;
-                    }
-                    
-                    const phone = phoneElement.value;
-                    console.log('[INFO] 电话号码:', phone);
-                    
-                    // 收集配置信息
+                // 测试发送给伴侣按钮点击事件
+                testButton.addEventListener('click', function() {
                     const config = collectConfigData();
-                    if (!config) {
-                        alert('配置信息收集失败');
-                        return;
+                    if (validateConfig(config)) {
+                        sendTestMessage(config, false);
                     }
+                });
+                
+                // 测试发送给自己按钮点击事件
+                document.getElementById('testSelfButton').addEventListener('click', function() {
+                    const partnerConfig = collectConfigData();
+                    const userConfig = collectUserConfigData(partnerConfig);
                     
-                    // 如果是双人套餐，检查用户本人配置
-                    if (selectedPlan === 'dual') {
-                        const userConfig = collectUserConfigData();
-                        if (!validateUserConfig(userConfig)) {
+                    if (validateUserConfig(userConfig)) {
+                        sendTestMessage(userConfig, true);
+                    }
+                });
+                
+                // 保存配置按钮点击事件
+                saveButton.addEventListener('click', function() {
+                    const config = collectConfigData();
+                    if (validateConfig(config)) {
+                        // 显示支付模态框
+                        showPaymentModal();
+                    }
+                });
+                
+                // 确认订阅按钮点击事件
+                document.getElementById('confirmPaymentButton').addEventListener('click', function() {
+                    try {
+                        console.log('[INFO] 确认订阅按钮被点击');
+                        
+                        // 获取选中的套餐
+                        const selectedPlanElement = document.querySelector('input[name="modal-plan"]:checked');
+                        if (!selectedPlanElement) {
+                            alert('请选择一个套餐');
                             return;
                         }
                         
-                        // 保存个人配置到sessionStorage
-                        sessionStorage.setItem('pendingUserConfig', JSON.stringify(userConfig));
-                    }
-                    
-                    // 保存配置到sessionStorage
-                    sessionStorage.setItem('pendingConfig', JSON.stringify(config));
-                    sessionStorage.setItem('pendingPhone', phone);
-                    sessionStorage.setItem('pendingPlan', selectedPlan);
-                    
-                    // 显示加载中状态
-                    const loadingSpinner = document.getElementById('loadingSpinner');
-                    const planSelection = document.getElementById('planSelection');
-                    
-                    if (loadingSpinner) {
-                        loadingSpinner.style.display = 'block';
-                    }
-                    
-                    if (planSelection) {
-                        planSelection.style.display = 'none';
-                    }
-                    
-                    // 禁用确认按钮，防止重复点击
-                    this.style.display = 'none';
-                    
-                    // 创建订单
-                    console.log('[INFO] 创建订单: 套餐=' + selectedPlan + ', 手机=' + phone);
-                    
-                    // 添加回支付请求代码
-                    fetch(`${API_BASE_URL}/api/payment/create`, {
-                method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            phone: phone,
-                            plan: selectedPlan
-                        })
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        console.log('[INFO] 创建订单响应:', data);
+                        const selectedPlan = selectedPlanElement.value;
+                        console.log('[INFO] 选择的套餐:', selectedPlan);
                         
-                        // 隐藏加载状态
-                        if (loadingSpinner) {
-                            loadingSpinner.style.display = 'none';
+                        // 从页面中获取手机号
+                        const phoneElement = document.getElementById('phone');
+                        if (!phoneElement || !phoneElement.value) {
+                            alert('请填写手机号');
+                            return;
                         }
                         
-                        if (data.success) {
-                            console.log('[INFO] 订单创建成功:', data.order_id);
+                        const phone = phoneElement.value;
+                        console.log('[INFO] 电话号码:', phone);
+                        
+                        // 收集配置信息
+                        const config = collectConfigData();
+                        if (!config) {
+                            alert('配置信息收集失败');
+                            return;
+                        }
+                        
+                        // 如果是双人套餐，检查用户本人配置
+                        if (selectedPlan === 'dual') {
+                            const userConfig = collectUserConfigData();
+                            if (!validateUserConfig(userConfig)) {
+                                return;
+                            }
                             
-                            // 保存订单信息
-                            sessionStorage.setItem('currentOrderId', data.order_id);
+                            // 保存个人配置到sessionStorage
+                            sessionStorage.setItem('pendingUserConfig', JSON.stringify(userConfig));
+                        }
+                        
+                        // 保存配置到sessionStorage
+                        sessionStorage.setItem('pendingConfig', JSON.stringify(config));
+                        sessionStorage.setItem('pendingPhone', phone);
+                        sessionStorage.setItem('pendingPlan', selectedPlan);
+                        
+                        // 显示加载中状态
+                        const loadingSpinner = document.getElementById('loadingSpinner');
+                        const planSelection = document.getElementById('planSelection');
+                        
+                        if (loadingSpinner) {
+                            loadingSpinner.style.display = 'block';
+                        }
+                        
+                        if (planSelection) {
+                            planSelection.style.display = 'none';
+                        }
+                        
+                        // 禁用确认按钮，防止重复点击
+                        this.style.display = 'none';
+                        
+                        // 创建订单
+                        console.log('[INFO] 创建订单: 套餐=' + selectedPlan + ', 手机=' + phone);
+                        
+                        // 添加回支付请求代码
+                        fetch(`${API_BASE_URL}/api/payment/create`, {
+                    method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                phone: phone,
+                                plan: selectedPlan
+                            })
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            console.log('[INFO] 创建订单响应:', data);
                             
-                            // 不显示二维码，直接跳转到支付页面
-                            window.location.href = data.payment_url;
-                        } else {
-                            alert('创建订单失败: ' + (data.message || '未知错误'));
+                            // 隐藏加载状态
+                            if (loadingSpinner) {
+                                loadingSpinner.style.display = 'none';
+                            }
+                            
+                            if (data.success) {
+                                console.log('[INFO] 订单创建成功:', data.order_id);
+                                
+                                // 保存订单信息
+                                sessionStorage.setItem('currentOrderId', data.order_id);
+                                
+                                // 不显示二维码，直接跳转到支付页面
+                                window.location.href = data.payment_url;
+                            } else {
+                                alert('创建订单失败: ' + (data.message || '未知错误'));
+                                
+                                // 恢复UI状态
+                                if (planSelection) {
+                                    planSelection.style.display = 'block';
+                                }
+                                this.style.display = 'inline-block';
+                            }
+                        })
+                        .catch(error => {
+                            if (loadingSpinner) {
+                                loadingSpinner.style.display = 'none';
+                            }
+                            console.error('[ERROR] 创建订单请求失败:', error);
+                            alert('创建订单发生错误: ' + error.message);
                             
                             // 恢复UI状态
                             if (planSelection) {
                                 planSelection.style.display = 'block';
                             }
                             this.style.display = 'inline-block';
-                        }
-                    })
-                    .catch(error => {
+                        });
+                    } catch (error) {
+                        console.error('[ERROR] 确认订阅处理发生错误:', error);
+                        alert('处理订阅请求出错: ' + error.message);
+                        
+                        // 恢复UI状态
+                        const loadingSpinner = document.getElementById('loadingSpinner');
                         if (loadingSpinner) {
                             loadingSpinner.style.display = 'none';
                         }
-                        console.error('[ERROR] 创建订单请求失败:', error);
-                        alert('创建订单发生错误: ' + error.message);
                         
-                        // 恢复UI状态
+                        const planSelection = document.getElementById('planSelection');
                         if (planSelection) {
                             planSelection.style.display = 'block';
                         }
+                        
                         this.style.display = 'inline-block';
-                    });
-                } catch (error) {
-                    console.error('[ERROR] 确认订阅处理发生错误:', error);
-                    alert('处理订阅请求出错: ' + error.message);
-                    
-                    // 恢复UI状态
-                    const loadingSpinner = document.getElementById('loadingSpinner');
-                    if (loadingSpinner) {
-                        loadingSpinner.style.display = 'none';
-                    }
-                    
-                    const planSelection = document.getElementById('planSelection');
-                    if (planSelection) {
-                        planSelection.style.display = 'block';
-                    }
-                    
-                    this.style.display = 'inline-block';
-                }
-            });
-            
-            // "我已完成支付"按钮点击事件
-            paymentCompleteButton.addEventListener('click', function() {
-                // 检查订单状态
-                const orderId = sessionStorage.getItem('currentOrderId');
-                if (orderId) {
-                    checkOrderStatus(orderId);
-                }
-            });
-            
-            // 双人套餐选择事件
-            document.querySelectorAll('input[name="modal-plan"]').forEach(radio => {
-                radio.addEventListener('change', function() {
-                    const dualConfigSection = document.getElementById('modalUserConfigSection');
-                    if (this.value === 'dual') {
-                        dualConfigSection.style.display = 'block';
-                    } else {
-                        dualConfigSection.style.display = 'none';
                     }
                 });
-            });
-            
-            // 页面加载时设置双人套餐价格为52
-            const dualPriceElement = document.getElementById('modalPriceDual');
-            if (dualPriceElement) {
-                dualPriceElement.textContent = '52';
-            }
+                
+                // "我已完成支付"按钮点击事件
+                paymentCompleteButton.addEventListener('click', function() {
+                    // 检查订单状态
+                    const orderId = sessionStorage.getItem('currentOrderId');
+                    if (orderId) {
+                        checkOrderStatus(orderId);
+                    }
+                });
+                
+                // 双人套餐选择事件
+                document.querySelectorAll('input[name="modal-plan"]').forEach(radio => {
+                    radio.addEventListener('change', function() {
+                        const dualConfigSection = document.getElementById('modalUserConfigSection');
+                        if (this.value === 'dual') {
+                            dualConfigSection.style.display = 'block';
+                        } else {
+                            dualConfigSection.style.display = 'none';
+                        }
+                    });
+                });
+                
+                // 页面加载时设置双人套餐价格为52
+                const dualPriceElement = document.getElementById('modalPriceDual');
+                if (dualPriceElement) {
+                    dualPriceElement.textContent = '52';
+                }
 
-            // 页面加载时直接设置价格
-            document.getElementById('modalPriceMonthly').textContent = '24.9';
-            document.getElementById('modalPriceAnnual').textContent = '29.9';
-            document.getElementById('modalPriceDual').textContent = '1';
+                // 页面加载时直接设置价格
+                document.getElementById('modalPriceMonthly').textContent = '24.9';
+                document.getElementById('modalPriceAnnual').textContent = '29.9';
+                document.getElementById('modalPriceDual').textContent = '1';
+            } catch (e) {
+                console.error('[ERROR] 页面初始化错误:', e);
+            }
         });
         
         // 获取价格数据函数
@@ -711,6 +681,26 @@
             } catch (error) {
                 console.error('[ERROR] 更新价格UI时出错:', error);
             }
+        }
+
+        // 添加支付模态框显示函数
+        function showPaymentModal() {
+            console.log('[INFO] 显示支付模态框');
+            // 重置模态框状态
+            document.getElementById('planSelection').style.display = 'block';
+            document.getElementById('qrcodeSection').style.display = 'none';
+            document.getElementById('confirmPaymentButton').style.display = 'inline-block';
+            document.getElementById('paymentCompleteButton').style.display = 'none';
+            
+            // 确保选择了套餐
+            const planOptions = document.querySelectorAll('input[name="modal-plan"]');
+            if (planOptions.length > 0) {
+                planOptions[0].checked = true;
+            }
+            
+            // 显示模态框
+            const paymentModal = new bootstrap.Modal(document.getElementById('paymentModal'));
+            paymentModal.show();
         }
 
         // 添加支付成功后的返回处理函数
@@ -1140,6 +1130,6 @@
     </script>
     
     <!-- 51LA统计代码 - 放在body结束标签前 -->
-    <script type="text/javascript" src="https://js.users.51.la/21954557.js"></script>
+    <script type="text/javascript" src="//js.users.51.la/21954557.js"></script>
 </body>
 </html> 
