@@ -419,33 +419,10 @@
             
             // 确认订阅按钮点击事件
             confirmPaymentButton.addEventListener('click', function() {
-                // 获取选中的套餐
                 const selectedPlan = document.querySelector('input[name="modal-plan"]:checked').value;
-                
-                // 如果是双人套餐，检查用户配置
                 if (selectedPlan === 'dual') {
-                    const selfOpenid = document.getElementById('modal_self_openid').value;
-                    const userLocationName = document.getElementById('modal_user_location_name').value;
-                    const userAdmName = document.getElementById('modal_user_adm_name').value;
-                    
-                    if (!selfOpenid || !userLocationName || !userAdmName) {
-                        alert('请填写您的个人配置信息');
-                        return;
-                    }
-                    
-                    // 保存个人配置到sessionStorage
-                    sessionStorage.setItem('self_openid', selfOpenid);
-                    sessionStorage.setItem('user_location_name', userLocationName);
-                    sessionStorage.setItem('user_adm_name', userAdmName);
+                    alert('您选择了双人套餐，将支付52元');
                 }
-                
-                // 从模态框中获取信息
-                const phone = sessionStorage.getItem('temp_phone');
-                const password = sessionStorage.getItem('temp_password');
-                const config = JSON.parse(sessionStorage.getItem('temp_config') || '{}');
-                
-                // 创建订单并处理支付
-                processPurchase(phone, password, config, selectedPlan);
             });
             
             // "我已完成支付"按钮点击事件
