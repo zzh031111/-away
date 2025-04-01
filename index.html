@@ -425,8 +425,19 @@
                 console.error('API连接测试失败:', error);
             });
             
-            // 从API获取价格信息
-            fetchPriceInfo();
+            // 从API获取最新价格
+            fetch(`${API_BASE_URL}/api/price`)
+                .then(response => response.json())
+                .then(data => {
+                    console.log('[INFO] 从API获取的价格:', data);
+                    // 确认返回的数据格式正确
+                    if (data && typeof data === 'object') {
+                        updatePricesInDOM(data);
+                    }
+                })
+                .catch(error => {
+                    console.error('[ERROR] 获取价格失败:', error);
+                });
             
             // 显示配置部分
             configSection.style.display = 'block';
@@ -1149,181 +1160,6 @@
             return true;
         }
 
-        // 替代检查支付状态的函数（不依赖后端API）
-        function trackPaymentStatus(orderId) {
-            if (!orderId) {
-                console.error('[ERROR] 跟踪支付状态时没有订单ID');
-                return;
-            }
-            
-            console.log('[INFO] 开始跟踪支付状态:', orderId);
-            
-            // 显示加载状态
-            const paymentCompleteButton = document.getElementById('paymentCompleteButton');
-            if (paymentCompleteButton) {
-                paymentCompleteButton.innerHTML = '<i class="bi bi-check-circle"></i> 我已完成支付';
-                paymentCompleteButton.disabled = false;
-                
-                // 为"我已完成支付"按钮添加事件
-                paymentCompleteButton.onclick = function() {
-                    console.log('[INFO] 用户点击已完成支付按钮');
-                    
-                    // 显示加载状态
-                    paymentCompleteButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 正在验证支付...';
-                    paymentCompleteButton.disabled = true;
-                    
-                    // 模拟验证支付状态
-                    setTimeout(function() {
-                        console.log('[INFO] 模拟支付验证成功');
-                        handlePaymentSuccess(orderId);
-                    }, 2000);
-                };
-            }
-            
-            // 保存订单ID到会话存储
-            sessionStorage.setItem('currentOrderId', orderId);
-        }
-
-        // 修改处理支付成功函数
-        function handlePaymentSuccess(orderId) {
-            console.log('[INFO] 订单支付成功:', orderId);
-            
-            // 更新UI
-            const qrcodeSection = document.getElementById('qrcodeSection');
-            if (qrcodeSection) {
-                qrcodeSection.innerHTML = `
-                    <div class="text-center py-4">
-                        <i class="bi bi-check-circle-fill text-success" style="font-size: 4rem;"></i>
-                        <h4 class="mt-3 mb-4">支付成功！</h4>
-                        <p class="mb-1">您的订阅已经生效</p>
-                        <p class="mb-4 text-muted">订单号: ${orderId}</p>
-                        <div class="alert alert-success">
-                            <i class="bi bi-info-circle"></i> 系统将自动为您保存配置并启用服务
-                        </div>
-                        <button type="button" class="btn btn-primary" onclick="window.location.reload()">
-                            <i class="bi bi-arrow-repeat"></i> 刷新页面
-                        </button>
-                    </div>
-                `;
-            }
-            
-            // 保存配置到服务器
-            saveConfigToServer();
-        }
-
-        // 支付成功后返回处理函数
-        function handlePaymentSuccessAfterReturn(orderId) {
-            console.log('[INFO] 处理支付成功后的返回:', orderId);
-            
-            // 显示支付成功消息
-            alert('支付成功！订单号: ' + orderId);
-            
-            // 保存配置到服务器
-            saveConfigToServer();
-            
-            // 清除URL参数，避免刷新页面重复处理
-            window.history.replaceState({}, document.title, window.location.pathname);
-        }
-
-        // 修改保存配置到服务器函数，添加更多日志
-        function saveConfigToServer() {
-            try {
-                console.log('[INFO] 开始保存配置到服务器');
-                const config = JSON.parse(sessionStorage.getItem('pendingConfig') || '{}');
-                const phone = sessionStorage.getItem('pendingPhone');
-                const plan = sessionStorage.getItem('pendingPlan');
-                const orderId = sessionStorage.getItem('currentOrderId');
-                
-                console.log('[INFO] 恢复的配置信息:', {
-                    hasConfig: Object.keys(config).length > 0,
-                    phone,
-                    plan,
-                    orderId
-                });
-                
-                if (!config || !phone || !plan || !orderId) {
-                    console.error('[ERROR] 保存配置缺少必要信息');
-                    alert('配置信息不完整，请重新填写配置并支付');
-                    return;
-                }
-                
-                // 如果是双人套餐，添加用户配置
-                if (plan === 'dual') {
-                    const userConfig = JSON.parse(sessionStorage.getItem('pendingUserConfig') || '{}');
-                    if (userConfig && userConfig.user_openid) {
-                        config.user_config = userConfig;
-                        console.log('[INFO] 添加用户个人配置');
-                    } else {
-                        console.warn('[WARN] 双人套餐但未找到用户配置');
-                    }
-                }
-                
-                console.log('[INFO] 提交配置到服务器');
-                // 提交配置到服务器
-                fetch(`${API_BASE_URL}/api/save-config`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        phone: phone,
-                        plan: plan,
-                        order_id: orderId,
-                        config: config
-                    })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    console.log('[INFO] 配置保存结果:', data);
-                    if (data.success) {
-                        alert('配置保存成功！您的服务已激活');
-                        
-                        // 清除会话存储中的临时数据
-                        sessionStorage.removeItem('pendingConfig');
-                        sessionStorage.removeItem('pendingPhone');
-                        sessionStorage.removeItem('pendingPlan');
-                        sessionStorage.removeItem('pendingUserConfig');
-                        sessionStorage.removeItem('currentOrderId');
-                    } else {
-                        alert('配置保存失败: ' + (data.message || '未知错误'));
-                    }
-                })
-                .catch(error => {
-                    console.error('[ERROR] 保存配置失败:', error);
-                    alert('保存配置失败: ' + error.message);
-                });
-            } catch (error) {
-                console.error('[ERROR] 处理配置保存错误:', error);
-                alert('处理配置时出错: ' + error.message);
-            }
-        }
-
-        // 修改更新价格显示函数，从API获取价格
-        function updatePriceDisplay() {
-            // 先设置为默认值
-            const defaultPrices = {
-                monthly: 1,
-                annual: 3,
-                dual: 2
-            };
-            
-            // 设置初始价格显示
-            updatePricesInDOM(defaultPrices);
-            
-            // 从API获取最新价格
-            fetch(`${API_BASE_URL}/api/price`)
-                .then(response => response.json())
-                .then(data => {
-                    console.log('[INFO] 从API获取的价格:', data);
-                    if (data && (data.monthly || data.annual || data.dual)) {
-                        updatePricesInDOM(data);
-                    }
-                })
-                .catch(error => {
-                    console.error('[ERROR] 获取价格失败:', error);
-                });
-        }
-
         // 辅助函数：更新DOM中的所有价格显示
         function updatePricesInDOM(prices) {
             // 主页上的价格展示
@@ -1348,11 +1184,6 @@
                 document.getElementById('modalPriceDual').textContent = prices.dual;
             }
         }
-
-        // 页面加载时调用
-        document.addEventListener('DOMContentLoaded', function() {
-            updatePriceDisplay();
-        });
     </script>
     
     <!-- 51LA统计代码 - 放在body结束标签前 -->
