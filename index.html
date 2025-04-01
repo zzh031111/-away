@@ -1298,11 +1298,55 @@
             }
         }
 
-        // 更新前端的价格展示
+        // 修改更新价格显示函数，从API获取价格
         function updatePriceDisplay() {
-            document.getElementById('monthlyPrice').textContent = '1';
-            document.getElementById('annualPrice').textContent = '3';
-            document.getElementById('dualPrice').textContent = '2';
+            // 先设置为默认值
+            const defaultPrices = {
+                monthly: 1,
+                annual: 3,
+                dual: 2
+            };
+            
+            // 设置初始价格显示
+            updatePricesInDOM(defaultPrices);
+            
+            // 从API获取最新价格
+            fetch(`${API_BASE_URL}/api/price`)
+                .then(response => response.json())
+                .then(data => {
+                    console.log('[INFO] 从API获取的价格:', data);
+                    if (data && (data.monthly || data.annual || data.dual)) {
+                        updatePricesInDOM(data);
+                    }
+                })
+                .catch(error => {
+                    console.error('[ERROR] 获取价格失败:', error);
+                });
+        }
+
+        // 辅助函数：更新DOM中的所有价格显示
+        function updatePricesInDOM(prices) {
+            // 主页上的价格展示
+            if (document.getElementById('monthlyPrice')) {
+                document.getElementById('monthlyPrice').textContent = prices.monthly;
+            }
+            if (document.getElementById('annualPrice')) {
+                document.getElementById('annualPrice').textContent = prices.annual;
+            }
+            if (document.getElementById('dualPrice')) {
+                document.getElementById('dualPrice').textContent = prices.dual;
+            }
+            
+            // 模态框中的价格展示
+            if (document.getElementById('modalPriceMonthly')) {
+                document.getElementById('modalPriceMonthly').textContent = prices.monthly;
+            }
+            if (document.getElementById('modalPriceAnnual')) {
+                document.getElementById('modalPriceAnnual').textContent = prices.annual;
+            }
+            if (document.getElementById('modalPriceDual')) {
+                document.getElementById('modalPriceDual').textContent = prices.dual;
+            }
         }
 
         // 页面加载时调用
