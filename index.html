@@ -110,8 +110,8 @@
         <!-- 使用前必看教程 -->
         <div class="tutorial-link">
             <strong>重要提示：</strong> 使用前请务必查看 <a href="https://bcn1jsdnj3t6.feishu.cn/wiki/DRsNwylmAiJxVokNmfnczd5XnMa" target="_blank" rel="noopener noreferrer">详细使用教程</a>，了解各项配置含义及获取方法！
-        </div>
-        
+                </div>
+                
         <!-- 用户认证表单 -->
         <div id="authForm" class="mb-4">
             <h4>用户信息</h4>
@@ -188,34 +188,48 @@
                         <input type="date" class="form-control" id="xiazhou_birthday" name="xiazhou_birthday">
                     </div>
                 </div>
-
+                
                 <div class="d-grid gap-2 d-md-flex justify-content-md-end">
                     <button id="testButton" type="button" class="btn btn-info me-md-2">
                         <i class="bi bi-send"></i> 测试发送
                     </button>
-                    <button id="saveButton" type="button" class="btn btn-primary">
-                        <i class="bi bi-check-circle"></i> 保存配置
-                    </button>
                 </div>
             </form>
-        </div>
-
-        <!-- 添加用户本人配置区域，仅在选择双人套餐时显示 -->
-        <div id="userConfigSection" class="mt-4" style="display: none;">
-            <h4>您的个人微信配置</h4>
-            <div class="row g-3 mb-3">
-                <div class="col-md-6">
-                    <label for="self_openid" class="form-label">您的微信OpenID</label>
-                    <input type="text" class="form-control" id="self_openid" placeholder="请输入您的微信OpenID">
+            
+            <hr class="my-4">
+            
+            <!-- 用户本人配置区域 -->
+            <div id="userConfigSection" class="mt-4">
+                <h4>您的个人微信配置</h4>
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> 如果您希望自己也收到每日问候，请填写以下信息并选择<strong>双人套餐</strong>
                 </div>
-                <div class="col-md-6">
-                    <label for="user_location_name" class="form-label">您所在的区县</label>
-                    <input type="text" class="form-control" id="user_location_name" placeholder="例如：海淀区">
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label for="self_openid" class="form-label">您的微信OpenID</label>
+                        <input type="text" class="form-control" id="self_openid" placeholder="请输入您的微信OpenID">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="user_location_name" class="form-label">您所在的区县</label>
+                        <input type="text" class="form-control" id="user_location_name" placeholder="例如：海淀区">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="user_adm_name" class="form-label">您所在的城市</label>
+                        <input type="text" class="form-control" id="user_adm_name" placeholder="例如：北京市">
+                    </div>
                 </div>
-                <div class="col-md-6">
-                    <label for="user_adm_name" class="form-label">您所在的城市</label>
-                    <input type="text" class="form-control" id="user_adm_name" placeholder="例如：北京市">
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                    <button id="testSelfButton" type="button" class="btn btn-info">
+                        <i class="bi bi-send"></i> 测试发送给您自己
+                    </button>
                 </div>
+            </div>
+            
+            <!-- 将所有区域的保存按钮放在最下方 -->
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                <button id="saveButton" type="button" class="btn btn-primary btn-lg">
+                    <i class="bi bi-check-circle"></i> 保存配置
+                </button>
             </div>
         </div>
         
@@ -246,8 +260,9 @@
                                 <input class="form-check-input" type="radio" name="modal-plan" id="modalPlanMonthly" value="monthly" checked>
                                 <label class="form-check-label" for="modalPlanMonthly">
                                     <h5 class="mb-1">月付套餐</h5>
-                                    <p class="mb-1">每月 <span id="modalPriceMonthly" class="fw-bold">1</span> 元</p>
-                                    <p class="mb-0 text-muted small">每天自动发送早安问候给伴侣</p>
+                                    <p class="mb-1">月付 <span id="modalPriceMonthly" class="fw-bold">24.9</span> 元</p>
+                                    <p class="mb-0 text-muted">每天自动发送早安问候给伴侣</p>
+                                    <p class="mb-0 text-secondary small"><i class="bi bi-info-circle"></i> 仅保存伴侣配置，不包含发送给您自己</p>
                                 </label>
                             </div>
                         </div>
@@ -262,14 +277,15 @@
                                 </label>
                             </div>
                         </div>
-                        
+
                         <div class="plan-option mb-3 p-3 border rounded" data-plan="dual">
                             <div class="form-check">
                                 <input class="form-check-input" type="radio" name="modal-plan" id="modalPlanDual" value="dual">
                                 <label class="form-check-label" for="modalPlanDual">
-                                    <h5 class="mb-1">双人年付套餐</h5>
-                                    <p class="mb-1">每年 <span id="modalPriceDual" class="fw-bold">52</span> 元</p>
-                                    <p class="mb-0 text-muted small">每天同时自动发送早安问候给您和伴侣</p>
+                                    <h5 class="mb-1">双人年付套餐 <span class="badge bg-primary">推荐</span></h5>
+                                    <p class="mb-1">年付 <span id="modalPriceDual" class="fw-bold">52</span> 元</p>
+                                    <p class="mb-0 text-muted">每天<strong>同时</strong>自动发送早安问候给您和伴侣</p>
+                                    <p class="mb-0 text-success small"><i class="bi bi-check-circle-fill"></i> 包含保存您个人配置的功能</p>
                                 </label>
                             </div>
                         </div>
@@ -291,7 +307,7 @@
                             <input type="text" class="form-control" id="modal_user_adm_name" placeholder="例如：北京市">
                         </div>
                     </div>
-
+                    
                     <!-- 支付加载中状态 -->
                     <div id="paymentLoading" style="display:none;">
                         <div class="text-center py-4">
@@ -300,8 +316,8 @@
                             </div>
                             <p class="mt-3">正在创建支付订单，请稍候...</p>
                         </div>
-                    </div>
-                    
+                </div>
+                
                     <!-- 支付二维码显示 -->
                     <div id="qrCodeContainer" style="display:none;" class="text-center py-3">
                         <h5 class="mb-3">请使用支付宝或微信扫码完成支付</h5>
@@ -319,7 +335,7 @@
                         <button id="paymentCompleteButton" type="button" class="btn btn-success" style="display:none;">我已完成支付</button>
                     </div>
                 </div>
-            </div>
+        </div>
         </div>
     </div>
     
@@ -354,11 +370,21 @@
             // 显示配置部分
             configSection.style.display = 'block';
             
-            // 测试发送按钮点击事件
+            // 测试发送给伴侣按钮点击事件
             testButton.addEventListener('click', function() {
                 const config = collectConfigData();
                 if (validateConfig(config)) {
                     sendTestMessage(config, false);
+                }
+            });
+            
+            // 测试发送给自己按钮点击事件
+            document.getElementById('testSelfButton').addEventListener('click', function() {
+                const partnerConfig = collectConfigData();
+                const userConfig = collectUserConfigData(partnerConfig);
+                
+                if (validateUserConfig(userConfig)) {
+                    sendTestMessage(userConfig, true);
                 }
             });
             
@@ -377,6 +403,15 @@
                 if (!validateConfig(config)) {
                     return;
                 }
+                
+                // 保存用户本人配置以备后用
+                const userConfig = collectUserConfigData(config);
+                
+                // 保存临时信息
+                sessionStorage.setItem('pendingPhone', phone);
+                sessionStorage.setItem('pendingPassword', password);
+                sessionStorage.setItem('pendingConfig', JSON.stringify(config));
+                sessionStorage.setItem('pendingUserConfig', JSON.stringify(userConfig));
                 
                 // 显示套餐选择模态框
                 showPaymentModal(phone, password, config);
@@ -612,39 +647,39 @@
             // 保存伴侣配置
             saveUserConfig(phone, password, config, plan, false);
             
-            // 如果是双人套餐，还需保存用户本人的配置
+            // 只有在选择了双人套餐时，才保存用户本人的配置
             if (plan === 'dual') {
-                // 创建用户本人的配置
-                const userConfig = {...config};
+                const userConfig = JSON.parse(sessionStorage.getItem('pendingUserConfig') || '{}');
                 
-                // 用户的OpenID和地理位置
-                userConfig.user_openid = sessionStorage.getItem('self_openid');
-                userConfig.location_name = sessionStorage.getItem('user_location_name');
-                userConfig.adm_name = sessionStorage.getItem('user_adm_name');
-                
-                // 交换生日信息
-                [userConfig.partner_birthday, userConfig.xiazhou_birthday] = 
-                    [userConfig.xiazhou_birthday, userConfig.partner_birthday];
-                    
-                // 保存用户配置
-                saveUserConfig(phone, password, userConfig, plan, true);
+                // 验证用户本人的配置是否完整
+                if (userConfig.user_openid && userConfig.location_name && userConfig.adm_name) {
+                    // 使用user_id + "_1"作为用户本人配置的标识
+                    saveUserConfig(phone + "_1", password, userConfig, plan, true);
+                    console.log('双人套餐 - 用户本人配置已保存');
+                } else {
+                    console.warn('双人套餐 - 用户本人配置不完整，跳过保存');
+                    alert('注意：您选择了双人套餐，但您的个人配置信息不完整，仅保存了伴侣配置。');
+                }
+            } else {
+                console.log('非双人套餐 - 仅保存伴侣配置');
             }
             
             // 显示成功消息
-            alert('支付成功！您的配置已保存。');
+            alert('支付成功！您的配置已保存。' + 
+                  (plan === 'dual' ? '\n您和伴侣将每天收到问候。' : '\n伴侣将每天收到问候。'));
             
             // 清除缓存的信息
+            clearSessionStorage();
+        }
+        
+        // 清除会话存储
+        function clearSessionStorage() {
             sessionStorage.removeItem('pendingConfig');
+            sessionStorage.removeItem('pendingUserConfig');
             sessionStorage.removeItem('pendingPhone');
             sessionStorage.removeItem('pendingPassword');
             sessionStorage.removeItem('pendingPlan');
             sessionStorage.removeItem('currentOrderId');
-            sessionStorage.removeItem('temp_phone');
-            sessionStorage.removeItem('temp_password');
-            sessionStorage.removeItem('temp_config');
-            sessionStorage.removeItem('self_openid');
-            sessionStorage.removeItem('user_location_name');
-            sessionStorage.removeItem('user_adm_name');
         }
         
         // 收集配置信息
@@ -680,6 +715,8 @@
         function sendTestMessage(config, isUser) {
             loadingSpinner.style.display = 'block';
             
+            console.log(`准备发送测试消息给${isUser ? '您自己' : '伴侣'}:`, config);
+            
             // 调用morning_greeting云函数发送测试消息
             fetch(`${MORNING_GREETING_URL}`, {
                 method: 'POST',
@@ -707,6 +744,12 @@
         
         // 保存用户配置
         function saveUserConfig(phone, password, config, plan, isUserConfig) {
+            console.log(`保存${isUserConfig ? '用户本人' : '伴侣'}配置到后端:`, {
+                phone,
+                plan,
+                is_user_config: isUserConfig
+            });
+            
             fetch(`${API_BASE_URL}/api/payment/complete-setup`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -721,11 +764,48 @@
             })
             .then(response => response.json())
             .then(result => {
-                console.log('配置保存结果:', result);
+                console.log(`${isUserConfig ? '用户本人' : '伴侣'}配置保存结果:`, result);
             })
             .catch(error => {
-                console.error('保存配置失败:', error);
+                console.error(`保存${isUserConfig ? '用户本人' : '伴侣'}配置失败:`, error);
             });
+        }
+        
+        // 收集用户本人的配置信息
+        function collectUserConfigData(partnerConfig) {
+            // 克隆伴侣配置作为基础
+            const userConfig = {...partnerConfig};
+            
+            // 更新用户特定的配置
+            userConfig.user_openid = document.getElementById('self_openid').value;
+            userConfig.location_name = document.getElementById('user_location_name').value;
+            userConfig.adm_name = document.getElementById('user_adm_name').value;
+            
+            // 交换生日信息
+            [userConfig.partner_birthday, userConfig.xiazhou_birthday] = 
+                [userConfig.xiazhou_birthday, userConfig.partner_birthday];
+            
+            return userConfig;
+        }
+        
+        // 验证用户本人的配置信息
+        function validateUserConfig(config) {
+            if (!config.user_openid) {
+                alert('请填写您的微信OpenID');
+                return false;
+            }
+            
+            if (!config.location_name) {
+                alert('请填写您所在的区县');
+                return false;
+            }
+            
+            if (!config.adm_name) {
+                alert('请填写您所在的城市');
+                return false;
+            }
+            
+            return true;
         }
     </script>
     
