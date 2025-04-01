@@ -413,7 +413,7 @@
                 sessionStorage.setItem('pendingUserConfig', JSON.stringify(userConfig));
                 
                 // 显示套餐选择模态框
-                showPaymentModal(phone, password, config);
+                showPaymentModal();
             });
             
             // 确认订阅按钮点击事件
@@ -576,22 +576,43 @@
             });
         }
         
-        // 显示支付模态框
-        function showPaymentModal(phone, password, config) {
-            // 保存临时数据到sessionStorage
-            sessionStorage.setItem('temp_phone', phone);
-            sessionStorage.setItem('temp_password', password);
-            sessionStorage.setItem('temp_config', JSON.stringify(config));
-            
-            // 隐藏其他组件，显示套餐选择
-            document.getElementById('planSelection').style.display = 'block';
-            document.getElementById('paymentLoading').style.display = 'none';
-            document.getElementById('qrcodeSection').style.display = 'none';
-            confirmPaymentButton.style.display = 'inline-block';
-            paymentCompleteButton.style.display = 'none';
-            
-            // 显示模态框
-            paymentModal.show();
+        // 修复显示支付模态框函数
+        function showPaymentModal() {
+            try {
+                console.log('打开支付模态框');
+                
+                // 重置模态框状态
+                const planSelection = document.getElementById('planSelection');
+                const qrcodeSection = document.getElementById('qrcodeSection');
+                const confirmPaymentButton = document.getElementById('confirmPaymentButton');
+                const paymentCompleteButton = document.getElementById('paymentCompleteButton');
+                
+                if (!planSelection || !qrcodeSection || !confirmPaymentButton || !paymentCompleteButton) {
+                    console.error('找不到支付模态框必要元素', {
+                        planSelection: !!planSelection,
+                        qrcodeSection: !!qrcodeSection,
+                        confirmPaymentButton: !!confirmPaymentButton,
+                        paymentCompleteButton: !!paymentCompleteButton
+                    });
+                    alert('初始化支付界面失败，请刷新页面后重试');
+                    return;
+                }
+                
+                // 重置模态框状态
+                planSelection.style.display = 'block';
+                qrcodeSection.style.display = 'none';
+                confirmPaymentButton.style.display = 'inline-block';
+                paymentCompleteButton.style.display = 'none';
+                
+                // 显示模态框
+                const paymentModal = new bootstrap.Modal(document.getElementById('paymentModal'));
+                paymentModal.show();
+                
+                console.log('支付模态框已显示');
+            } catch (error) {
+                console.error('显示支付模态框失败:', error);
+                alert('打开支付界面失败: ' + error.message);
+            }
         }
         
         // 检查订单状态
