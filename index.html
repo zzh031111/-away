@@ -380,7 +380,13 @@
         
         // 页面加载完成后执行
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('页面加载完成，当前API基础URL:', API_BASE_URL);
+            console.log('[INFO] 页面加载完成');
+            
+            // 检查价格信息
+            fetchPrices();
+            
+            // 检查URL参数判断是否支付完成返回
+            checkPaymentReturnStatus();
             
             // 如果API_BASE_URL未定义或为空，使用默认值
             if (!window.API_BASE_URL) {
@@ -615,17 +621,6 @@
                 });
             });
             
-            // 检查URL参数中是否有支付成功标记
-            const urlParams = new URLSearchParams(window.location.search);
-            const paymentResult = urlParams.get('payment_result');
-            
-            if (paymentResult === 'success') {
-                paymentSuccess();
-                
-                // 移除URL参数
-                window.history.replaceState({}, document.title, window.location.pathname);
-            }
-            
             // 页面加载时设置双人套餐价格为52
             const dualPriceElement = document.getElementById('modalPriceDual');
             if (dualPriceElement) {
@@ -636,18 +631,20 @@
             document.getElementById('modalPriceMonthly').textContent = '24.9';
             document.getElementById('modalPriceAnnual').textContent = '29.9';
             document.getElementById('modalPriceDual').textContent = '1';
-
-            // 添加页面加载时的支付状态检测
-            console.log('[INFO] 页面加载完成，检查支付状态');
+        });
+        
+        // 将支付状态检查抽取为单独函数，避免变量重复声明
+        function checkPaymentReturnStatus() {
+            console.log('[INFO] 检查支付返回状态');
             
-            // 检查URL参数判断是否支付完成返回
-            const urlParams = new URLSearchParams(window.location.search);
+            // 使用不同的变量名
+            const paymentParams = new URLSearchParams(window.location.search);
             
             // 如果URL中含有支付相关参数，如trade_status=TRADE_SUCCESS
-            if (urlParams.has('trade_status') || urlParams.has('result')) {
-                const tradeStatus = urlParams.get('trade_status');
-                const result = urlParams.get('result');
-                const outTradeNo = urlParams.get('out_trade_no');
+            if (paymentParams.has('trade_status') || paymentParams.has('result')) {
+                const tradeStatus = paymentParams.get('trade_status');
+                const result = paymentParams.get('result');
+                const outTradeNo = paymentParams.get('out_trade_no');
                 
                 console.log('[INFO] 检测到支付返回:', { tradeStatus, result, outTradeNo });
                 
@@ -669,7 +666,7 @@
                     }
                 }
             }
-        });
+        }
         
         // 改进价格获取函数，增加错误处理和重试逻辑
         function fetchPriceInfo() {
