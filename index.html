@@ -784,32 +784,58 @@
             });
         }
         
-        // 收集用户本人的配置信息
+        // 修复收集用户本人的配置信息函数
         function collectUserConfigData(partnerConfig) {
-            // 克隆伴侣配置作为基础
-            const userConfig = {...partnerConfig};
-            
-            // 更新用户特定的配置
-            userConfig.user_openid = document.getElementById('userOpenid').value;
-            userConfig.location_name = document.getElementById('locationName').value;
-            userConfig.adm_name = document.getElementById('user_adm_name').value;
-            
-            // 交换生日信息
-            [userConfig.partner_birthday, userConfig.xiazhou_birthday] = 
-                [userConfig.xiazhou_birthday, userConfig.partner_birthday];
-            
-            return userConfig;
+            try {
+                // 克隆伴侣配置作为基础
+                const userConfig = {...partnerConfig};
+                
+                // 检查必要的DOM元素是否存在
+                const userOpenid = document.getElementById('userOpenid');
+                const userTemplateId = document.getElementById('userTemplateId');
+                const locationName = document.getElementById('locationName');
+                const admName = document.getElementById('admName');
+                
+                if (!userOpenid || !locationName || !admName) {
+                    console.error('找不到必要的用户配置DOM元素');
+                    return null;
+                }
+                
+                // 更新用户特定的配置
+                userConfig.user_openid = userOpenid.value.trim();
+                userConfig.template_id = userTemplateId ? userTemplateId.value.trim() : userConfig.template_id;
+                userConfig.location_name = locationName.value.trim();
+                userConfig.adm_name = admName.value.trim();
+                
+                // 交换生日信息
+                if (userConfig.xiazhou_birthday && userConfig.partner_birthday) {
+                    [userConfig.partner_birthday, userConfig.xiazhou_birthday] = 
+                        [userConfig.xiazhou_birthday, userConfig.partner_birthday];
+                }
+                
+                console.log('收集到的用户配置:', userConfig);
+                return userConfig;
+            } catch (error) {
+                console.error('收集用户配置数据时出错:', error);
+                alert('收集用户配置失败：' + error.message);
+                return null;
+            }
         }
         
-        // 验证用户本人的配置信息
+        // 验证用户配置的函数
         function validateUserConfig(config) {
+            if (!config) {
+                alert('配置无效，请检查您的输入');
+                return false;
+            }
+            
             if (!config.user_openid) {
                 alert('请填写您的微信OpenID');
                 return false;
             }
             
             if (!config.location_name) {
-                alert('请填写您所在的区县');
+                alert('请填写您所在的区/县');
                 return false;
             }
             
