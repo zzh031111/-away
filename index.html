@@ -419,10 +419,50 @@
             
             // 确认订阅按钮点击事件
             confirmPaymentButton.addEventListener('click', function() {
+                // 获取选中的套餐
                 const selectedPlan = document.querySelector('input[name="modal-plan"]:checked').value;
+                
                 if (selectedPlan === 'dual') {
                     alert('您选择了双人套餐，将支付52元');
                 }
+                
+                // 从模态框中获取信息
+                const phone = document.getElementById('phone').value;
+                const password = document.getElementById('password').value;
+                
+                // 验证基本信息
+                if (!phone || !password) {
+                    alert('请填写手机号和密码');
+                    return;
+                }
+                
+                // 收集配置信息
+                const config = collectConfigData();
+                
+                // 如果是双人套餐，检查用户本人配置
+                if (selectedPlan === 'dual') {
+                    const selfOpenid = document.getElementById('self_openid').value;
+                    const userLocationName = document.getElementById('user_location_name').value;
+                    const userAdmName = document.getElementById('user_adm_name').value;
+                    
+                    if (!selfOpenid || !userLocationName || !userAdmName) {
+                        alert('您选择了双人套餐，但未填写您的个人配置信息');
+                        return;
+                    }
+                    
+                    // 保存个人配置到sessionStorage
+                    const userConfig = collectUserConfigData(config);
+                    sessionStorage.setItem('pendingUserConfig', JSON.stringify(userConfig));
+                }
+                
+                // 保存基本信息到sessionStorage
+                sessionStorage.setItem('pendingPhone', phone);
+                sessionStorage.setItem('pendingPassword', password);
+                sessionStorage.setItem('pendingConfig', JSON.stringify(config));
+                sessionStorage.setItem('pendingPlan', selectedPlan);
+                
+                // 创建订单
+                createOrder(phone, selectedPlan);
             });
             
             // "我已完成支付"按钮点击事件
