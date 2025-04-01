@@ -201,21 +201,29 @@
             <!-- 用户本人配置区域 -->
             <div id="userConfigSection" class="mt-4">
                 <h4>您的个人微信配置</h4>
-                <div class="alert alert-info">
-                    <i class="bi bi-info-circle"></i> 如果您希望自己也收到每日问候，请填写以下信息并选择<strong>双人套餐</strong>
-                </div>
-                <div class="row g-3 mb-3">
-                    <div class="col-md-6">
-                        <label for="self_openid" class="form-label">您的微信OpenID</label>
-                        <input type="text" class="form-control" id="self_openid" placeholder="请输入您的微信OpenID">
+                <div class="form-section auth-section">
+                    <h3>个人信息配置</h3>
+                    <div class="mb-3">
+                        <label for="userOpenid" class="form-label required">您的微信OpenID</label>
+                        <input type="text" class="form-control" id="userOpenid" placeholder="请输入您的微信OpenID">
+                        <div class="form-text">用于接收每日通知的微信ID</div>
                     </div>
-                    <div class="col-md-6">
-                        <label for="user_location_name" class="form-label">您所在的区县</label>
-                        <input type="text" class="form-control" id="user_location_name" placeholder="例如：海淀区">
+                    
+                    <!-- 添加模板ID输入字段 -->
+                    <div class="mb-3">
+                        <label for="userTemplateId" class="form-label required">您的模板ID</label>
+                        <input type="text" class="form-control" id="userTemplateId" placeholder="请输入您的微信模板ID">
+                        <div class="form-text">用于发送每日通知的模板ID</div>
                     </div>
-                    <div class="col-md-6">
-                        <label for="user_adm_name" class="form-label">您所在的城市</label>
-                        <input type="text" class="form-control" id="user_adm_name" placeholder="例如：北京市">
+                    
+                    <div class="mb-3">
+                        <label for="locationName" class="form-label required">区/县</label>
+                        <input type="text" class="form-control" id="locationName" placeholder="例如：海淀区">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="admName" class="form-label required">城市</label>
+                        <input type="text" class="form-control" id="admName" placeholder="例如：北京市">
                     </div>
                 </div>
                 <div class="d-grid gap-2 d-md-flex justify-content-md-end">
@@ -442,7 +450,7 @@
                 // 如果是双人套餐，检查用户本人配置
                 if (selectedPlan === 'dual') {
                     const selfOpenid = document.getElementById('self_openid').value;
-                    const userLocationName = document.getElementById('user_location_name').value;
+                    const userLocationName = document.getElementById('locationName').value;
                     const userAdmName = document.getElementById('user_adm_name').value;
                     
                     if (!selfOpenid || !userLocationName || !userAdmName) {
@@ -583,40 +591,98 @@
                 });
         }
         
-        // 支付成功处理
+        // 修改支付成功处理函数
         function paymentSuccess() {
-            // 获取缓存的信息
-            const plan = sessionStorage.getItem('pendingPlan');
+            // 隐藏支付相关界面
+            document.getElementById('paymentModal').style.display = 'none';
+            
+            // 获取保存的配置信息
             const phone = sessionStorage.getItem('pendingPhone');
-            const password = sessionStorage.getItem('pendingPassword');
-            const config = JSON.parse(sessionStorage.getItem('pendingConfig') || '{}');
+            const plan = sessionStorage.getItem('pendingPlan');
+            const orderId = sessionStorage.getItem('currentOrderId');
             
-            // 保存伴侣配置
-            saveUserConfig(phone, password, config, plan, false);
-            
-            // 只有在选择了双人套餐时，才保存用户本人的配置
+            // 如果是双人套餐，先保存伴侣的配置
             if (plan === 'dual') {
-                const userConfig = JSON.parse(sessionStorage.getItem('pendingUserConfig') || '{}');
+                const partnerConfig = JSON.parse(sessionStorage.getItem('pendingConfig') || '{}');
                 
-                // 验证用户本人的配置是否完整
-                if (userConfig.user_openid && userConfig.location_name && userConfig.adm_name) {
-                    // 使用user_id + "_1"作为用户本人配置的标识
-                    saveUserConfig(phone + "_1", password, userConfig, plan, true);
-                    console.log('双人套餐 - 用户本人配置已保存');
-                } else {
-                    console.warn('双人套餐 - 用户本人配置不完整，跳过保存');
-                    alert('注意：您选择了双人套餐，但您的个人配置信息不完整，仅保存了伴侣配置。');
-                }
+                // 保存伴侣配置
+                fetch(`${API_BASE_URL}/api/save-config`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        phone: phone,
+                        config: partnerConfig,
+                        order_id: orderId
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        console.log('伴侣配置保存成功');
+                        
+                        // 获取并保存用户自己的配置
+                        const userConfig = getUserConfig();
+                        
+                        // 保存用户自己的配置
+                        return fetch(`${API_BASE_URL}/api/save-config`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                phone: phone,
+                                config: userConfig,
+                                order_id: orderId,
+                                is_user: true  // 标记这是用户自己的配置
+                            })
+                        });
+                    } else {
+                        throw new Error('保存伴侣配置失败: ' + data.message);
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        console.log('用户配置保存成功');
+                        showSuccessMessage('配置保存成功，您可以开始使用早安推送服务了！');
+                    } else {
+                        throw new Error('保存用户配置失败: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('保存配置失败:', error);
+                    showErrorMessage('保存配置失败: ' + error.message);
+                });
             } else {
-                console.log('非双人套餐 - 仅保存伴侣配置');
+                // 单人套餐，只保存伴侣配置
+                const config = JSON.parse(sessionStorage.getItem('pendingConfig') || '{}');
+                
+                fetch(`${API_BASE_URL}/api/save-config`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        phone: phone,
+                        config: config,
+                        order_id: orderId
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showSuccessMessage('配置保存成功，您可以开始使用早安推送服务了！');
+                    } else {
+                        showErrorMessage('保存配置失败: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('保存配置失败:', error);
+                    showErrorMessage('保存配置失败: ' + error.message);
+                });
             }
-            
-            // 显示成功消息
-            alert('支付成功！您的配置已保存。' + 
-                  (plan === 'dual' ? '\n您和伴侣将每天收到问候。' : '\n伴侣将每天收到问候。'));
-            
-            // 清除缓存的信息
-            clearSessionStorage();
         }
         
         // 清除会话存储
@@ -724,8 +790,8 @@
             const userConfig = {...partnerConfig};
             
             // 更新用户特定的配置
-            userConfig.user_openid = document.getElementById('self_openid').value;
-            userConfig.location_name = document.getElementById('user_location_name').value;
+            userConfig.user_openid = document.getElementById('userOpenid').value;
+            userConfig.location_name = document.getElementById('locationName').value;
             userConfig.adm_name = document.getElementById('user_adm_name').value;
             
             // 交换生日信息
@@ -814,6 +880,60 @@
                 alert('创建订单发生错误，请稍后再试');
                 console.error('创建订单错误:', error);
             });
+        }
+
+        // 添加在fetchPriceInfo函数后
+        function testApiWithoutCors() {
+            // 创建一个脚本标记
+            var script = document.createElement('script');
+            script.src = `${API_BASE_URL}/api/price?callback=handlePriceData&t=${Date.now()}`;
+            document.head.appendChild(script);
+        }
+
+        // 接收JSONP回调数据
+        function handlePriceData(data) {
+            console.log('通过JSONP获取的价格数据:', data);
+            if (data) {
+                document.getElementById('modalPriceMonthly').textContent = data.monthly || '24.9';
+                document.getElementById('modalPriceAnnual').textContent = data.annual || '29.9';
+                document.getElementById('modalPriceDual').textContent = data.dual || '1';
+            }
+        }
+
+        // 页面加载时尝试获取价格
+        document.addEventListener('DOMContentLoaded', function() {
+            // 首先尝试正常获取
+            fetchPriceInfo();
+            
+            // 如果5秒内没有成功，使用JSONP方式再试一次
+            setTimeout(function() {
+                if (document.getElementById('modalPriceDual').textContent === '1') {
+                    console.log('常规获取失败，尝试JSONP方式');
+                    testApiWithoutCors();
+                }
+            }, 5000);
+        });
+
+        // 更新获取用户配置的函数，增加模板ID字段
+        function getUserConfig() {
+            const userConfig = {
+                user_openid: document.getElementById('userOpenid').value.trim(),
+                template_id: document.getElementById('userTemplateId').value.trim(), // 添加模板ID
+                location_name: document.getElementById('locationName').value.trim(),
+                adm_name: document.getElementById('admName').value.trim(),
+                tz_offset: "Asia/Shanghai",  // 默认使用上海时区
+                language: "zh",  // 默认使用中文
+                weather: true,  // 默认开启天气
+                date_format: "YYYY-MM-DD",  // 默认日期格式
+                
+                // 其他配置参数
+                nickname: document.getElementById('nickname').value.trim() || "我",
+                partner_nickname: document.getElementById('partnerNickname').value.trim() || "伴侣",
+                holidays: true,  // 默认开启节假日提醒
+                countdown_type: "anniversary"  // 默认倒计时类型
+            };
+            
+            return userConfig;
         }
     </script>
     
