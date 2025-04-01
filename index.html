@@ -546,6 +546,18 @@
         
         // 处理购买流程
         function processPurchase(phone, password, config, plan) {
+            // 获取当前显示的价格
+            let price;
+            if (plan === 'monthly') {
+                price = document.getElementById('modalPriceMonthly').textContent;
+            } else if (plan === 'annual') {
+                price = document.getElementById('modalPriceAnnual').textContent;
+            } else if (plan === 'dual') {
+                price = document.getElementById('modalPriceDual').textContent;
+            }
+            
+            console.log(`创建订单: 套餐=${plan}, 价格=${price}`);
+            
             // 隐藏套餐选择，显示加载中
             document.getElementById('planSelection').style.display = 'none';
             document.getElementById('modalUserConfigSection').style.display = 'none';
@@ -806,6 +818,67 @@
             }
             
             return true;
+        }
+
+        // 完成前端创建订单函数的修改
+        function createOrder(phone, plan) {
+            // 获取当前显示的价格
+            let price;
+            if (plan === 'monthly') {
+                price = document.getElementById('modalPriceMonthly').textContent;
+            } else if (plan === 'annual') {
+                price = document.getElementById('modalPriceAnnual').textContent;
+            } else if (plan === 'dual') {
+                price = document.getElementById('modalPriceDual').textContent;
+            }
+            
+            console.log(`创建订单: 套餐=${plan}, 显示价格=${price}`);
+            
+            // 生成订单并存储信息
+            sessionStorage.setItem('pendingPlan', plan);
+            
+            // 调用API创建订单
+            fetch(`${API_BASE_URL}/api/payment/create-order`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    phone: phone,
+                    plan: plan
+                    // 注意：不传递价格参数，让后端根据plan决定正确的价格
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log('订单创建成功，支付页面URL:', data.payment_url);
+                    console.log('订单ID:', data.order_id);
+                    
+                    // 存储订单ID
+                    sessionStorage.setItem('currentOrderId', data.order_id);
+                    
+                    // 显示支付二维码
+                    document.getElementById('paymentQrcode').src = data.qrcode_url || 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(data.payment_url);
+                    document.getElementById('planSelection').style.display = 'none';
+                    document.getElementById('qrcodeSection').style.display = 'block';
+                    
+                    // 提供支付链接
+                    const paymentLink = document.getElementById('paymentLink');
+                    paymentLink.href = data.payment_url;
+                    paymentLink.style.display = 'block';
+                    
+                    // 检查支付状态
+                    checkPaymentStatus(data.order_id);
+                } else {
+                    alert('创建订单失败: ' + data.message);
+                    console.error('创建订单失败:', data);
+                }
+            })
+            .catch(error => {
+                alert('创建订单发生错误，请稍后再试');
+                console.error('创建订单错误:', error);
+            });
         }
     </script>
     
