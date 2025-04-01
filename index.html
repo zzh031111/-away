@@ -105,13 +105,13 @@
         
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h2>微信推送配置</h2>
-                </div>
-                
+        </div>
+        
         <!-- 使用前必看教程 -->
         <div class="tutorial-link">
             <strong>重要提示：</strong> 使用前请务必查看 <a href="https://bcn1jsdnj3t6.feishu.cn/wiki/DRsNwylmAiJxVokNmfnczd5XnMa" target="_blank" rel="noopener noreferrer">详细使用教程</a>，了解各项配置含义及获取方法！
-                </div>
-                
+        </div>
+        
         <!-- 添加套餐选择部分，包含新的年付52元套餐 -->
         <div class="mb-4">
             <h4>请选择订阅套餐</h4>
@@ -120,26 +120,26 @@
                 <label class="form-check-label" for="planMonthly">
                     月付 <span id="priceMonthly">1</span>元 - 每天自动发送早安问候给伴侣
                 </label>
-                </div>
+            </div>
             <div class="form-check mb-2">
                 <input class="form-check-input" type="radio" name="plan" id="planAnnual" value="annual">
                 <label class="form-check-label" for="planAnnual">
                     年付 <span id="priceAnnual">2</span>元 - 每天自动发送早安问候给伴侣（相当于<span id="discountMonthly">免费用1个月</span>）
                 </label>
-                </div>
+            </div>
             <div class="form-check mb-2">
                 <input class="form-check-input" type="radio" name="plan" id="planDual" value="dual">
                 <label class="form-check-label" for="planDual">
                     年付 <span id="priceDual">52</span>元 - 每天同时自动发送早安问候给您和伴侣
                 </label>
-                </div>
-                </div>
-                
+            </div>
+        </div>
+        
         <!-- 添加配置区域标题 -->
         <div class="mb-3">
             <h4>伴侣微信配置</h4>
-                </div>
-                
+        </div>
+        
         <!-- 配置区域 -->
         <div class="config-section" id="configSection">
             <h4>详细配置信息</h4>
@@ -151,37 +151,37 @@
                     <div class="col-md-6">
                         <label for="app_id" class="form-label required">微信公众号AppID</label>
                         <input type="text" class="form-control" id="app_id" name="app_id" required>
-                </div>
+                    </div>
                     <div class="col-md-6">
                         <label for="app_secret" class="form-label required">微信公众号AppSecret</label>
                         <input type="password" class="form-control" id="app_secret" name="app_secret" required>
-                </div>
+                    </div>
                 </div>
                 <div class="row mb-3">
                     <div class="col-md-6">
                         <label for="user_openid" class="form-label required">接收消息用户的OpenID</label>
                         <input type="text" class="form-control" id="user_openid" name="user_openid" required>
                     </div>
-                            <div class="col-md-6">
+                    <div class="col-md-6">
                         <label for="template_id" class="form-label required">早安模板ID</label>
                         <input type="text" class="form-control" id="template_id" name="template_id" required>
-                                    </div>
-                                    </div>
+                    </div>
+                </div>
                 <div class="row mb-3">
                     <div class="col-md-6">
                         <label for="indices_template_id" class="form-label">天气指数模板ID (可选)</label>
                         <input type="text" class="form-control" id="indices_template_id" name="indices_template_id">
-                                </div>
+                    </div>
                     <div class="col-md-6">
                         <label for="location_name" class="form-label required">天气查询-区县名</label>
                         <input type="text" class="form-control" id="location_name" name="location_name" required placeholder="例如: 朝阳区">
-                            </div>
+                    </div>
                 </div>
                 <div class="row mb-3">
-                            <div class="col-md-6">
+                    <div class="col-md-6">
                         <label for="adm_name" class="form-label required">天气查询-市/省名</label>
                         <input type="text" class="form-control" id="adm_name" name="adm_name" required placeholder="例如: 北京市 或 河北省">
-                                    </div>
+                    </div>
                     <div class="col-md-6">
                         <label for="meet_date" class="form-label">相爱纪念日 (可选)</label>
                         <input type="date" class="form-control" id="meet_date" name="meet_date">
@@ -235,7 +235,7 @@
                 <div class="modal-header">
                     <h5 class="modal-title">订阅计划</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                    </div>
+                </div>
                 <div class="modal-body">
                     <!-- 计划选择部分 -->
                     <div id="planSelection">
@@ -244,57 +244,57 @@
                             <h5>月度订阅</h5>
                             <p class="mb-1">价格: <span class="price-monthly">24.90</span>元/月</p>
                             <p class="mb-0 text-muted">每月自动续费，可随时取消</p>
-                                </div>
+                        </div>
                         <div class="plan-option" data-plan="annual">
                             <h5>年度订阅</h5>
                             <p class="mb-1">价格: <span class="price-annual">59.90</span>元/年</p>
                             <p class="mb-0 text-muted">比月付更划算，节省80%</p>
-                            </div>
                         </div>
+                    </div>
 
                     <!-- 支付加载中状态 -->
                     <div id="paymentLoading" style="display:none;">
                         <div class="text-center py-4">
                             <div class="spinner-border text-primary" role="status">
                                 <span class="visually-hidden">加载中...</span>
-                        </div>
+                            </div>
                             <p class="mt-3">正在创建支付订单，请稍候...</p>
+                        </div>
                     </div>
                 </div>
                 
-                    <!-- 支付信息显示 -->
-                    <div id="paymentInfo" style="display:none;">
-                        <p id="paymentStatus" class="text-center mb-3">请完成支付...</p>
-                        
-                        <!-- 二维码支付 -->
-                        <div id="qrCodeContainer" class="text-center py-2" style="display:none;">
-                            <img id="qrCodeImage" class="img-fluid mb-3" style="max-width: 200px;" alt="支付二维码">
-                            <button id="directPayButton" class="btn btn-primary btn-sm" style="display:none;">
-                                打开支付页面
-                            </button>
+                <!-- 支付信息显示 -->
+                <div id="paymentInfo" style="display:none;">
+                    <p id="paymentStatus" class="text-center mb-3">请完成支付...</p>
+                    
+                    <!-- 二维码支付 -->
+                    <div id="qrCodeContainer" class="text-center py-2" style="display:none;">
+                        <img id="qrCodeImage" class="img-fluid mb-3" style="max-width: 200px;" alt="支付二维码">
+                        <button id="directPayButton" class="btn btn-primary btn-sm" style="display:none;">
+                            打开支付页面
+                        </button>
+                    </div>
+                    
+                    <!-- 表单重定向支付 -->
+                    <div id="formRedirectContainer" class="text-center py-2" style="display:none;">
+                        <p>即将跳转到支付页面，请稍候...</p>
+                        <div id="formRedirectContent"></div>
+                    </div>
+                    
+                    <!-- 支付链接 -->
+                    <div id="paymentLinkContainer" class="text-center py-2" style="display:none;">
+                        <a id="paymentLink" href="#" class="btn btn-success" target="_blank">
+                            点击前往支付
+                        </a>
+                    </div>
                 </div>
                 
-                        <!-- 表单重定向支付 -->
-                        <div id="formRedirectContainer" class="text-center py-2" style="display:none;">
-                            <p>即将跳转到支付页面，请稍候...</p>
-                            <div id="formRedirectContent"></div>
-                </div>
-                
-                        <!-- 支付链接 -->
-                        <div id="paymentLinkContainer" class="text-center py-2" style="display:none;">
-                            <a id="paymentLink" href="#" class="btn btn-success" target="_blank">
-                                点击前往支付
-                            </a>
-                </div>
-        </div>
-        
-                    <!-- 支付错误信息 -->
-                    <div id="paymentError" class="alert alert-danger" style="display:none;"></div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                    <button id="confirmPaymentButton" type="button" class="btn btn-primary">确认订阅</button>
-                </div>
+                <!-- 支付错误信息 -->
+                <div id="paymentError" class="alert alert-danger" style="display:none;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button id="confirmPaymentButton" type="button" class="btn btn-primary">确认订阅</button>
             </div>
         </div>
     </div>
@@ -315,9 +315,9 @@
         const saveConfigButton = document.getElementById('saveConfigButton');
         const testSendButton = document.getElementById('testSendButton');
         const authMessage = document.getElementById('authMessage');
-            const loadingMessage = document.getElementById('loadingMessage');
-            const successMessage = document.getElementById('successMessage');
-            const errorMessage = document.getElementById('errorMessage');
+        const loadingMessage = document.getElementById('loadingMessage');
+        const successMessage = document.getElementById('successMessage');
+        const errorMessage = document.getElementById('errorMessage');
         const configSection = document.getElementById('configSection');
         const userStatus = document.getElementById('userStatus');
         const paymentModalElement = document.getElementById('paymentModal');
