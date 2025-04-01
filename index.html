@@ -510,6 +510,17 @@
                         return;
                     }
                     
+                    // 如果是双人套餐，检查用户本人配置
+                    if (selectedPlan === 'dual') {
+                        const userConfig = collectUserConfigData();
+                        if (!validateUserConfig(userConfig)) {
+                            return;
+                        }
+                        
+                        // 保存个人配置到sessionStorage
+                        sessionStorage.setItem('pendingUserConfig', JSON.stringify(userConfig));
+                    }
+                    
                     // 保存配置到sessionStorage
                     sessionStorage.setItem('pendingConfig', JSON.stringify(config));
                     sessionStorage.setItem('pendingPhone', phone);
@@ -533,10 +544,73 @@
                     // 创建订单
                     console.log('[INFO] 创建订单: 套餐=' + selectedPlan + ', 手机=' + phone);
                     
-                    // 执行后续代码...
+                    // 添加回支付请求代码
+                    fetch(`${API_BASE_URL}/api/payment/create`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            phone: phone,
+                            plan: selectedPlan
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log('[INFO] 创建订单响应:', data);
+                        
+                        // 隐藏加载状态
+                        if (loadingSpinner) {
+                            loadingSpinner.style.display = 'none';
+                        }
+                        
+                        if (data.success) {
+                            console.log('[INFO] 订单创建成功:', data.order_id);
+                            
+                            // 保存订单信息
+                            sessionStorage.setItem('currentOrderId', data.order_id);
+                            
+                            // 不显示二维码，直接跳转到支付页面
+                            window.location.href = data.payment_url;
+                        } else {
+                            alert('创建订单失败: ' + (data.message || '未知错误'));
+                            
+                            // 恢复UI状态
+                            if (planSelection) {
+                                planSelection.style.display = 'block';
+                            }
+                            this.style.display = 'inline-block';
+                        }
+                    })
+                    .catch(error => {
+                        if (loadingSpinner) {
+                            loadingSpinner.style.display = 'none';
+                        }
+                        console.error('[ERROR] 创建订单请求失败:', error);
+                        alert('创建订单发生错误: ' + error.message);
+                        
+                        // 恢复UI状态
+                        if (planSelection) {
+                            planSelection.style.display = 'block';
+                        }
+                        this.style.display = 'inline-block';
+                    });
                 } catch (error) {
                     console.error('[ERROR] 确认订阅处理发生错误:', error);
                     alert('处理订阅请求出错: ' + error.message);
+                    
+                    // 恢复UI状态
+                    const loadingSpinner = document.getElementById('loadingSpinner');
+                    if (loadingSpinner) {
+                        loadingSpinner.style.display = 'none';
+                    }
+                    
+                    const planSelection = document.getElementById('planSelection');
+                    if (planSelection) {
+                        planSelection.style.display = 'block';
+                    }
+                    
+                    this.style.display = 'inline-block';
                 }
             });
             
