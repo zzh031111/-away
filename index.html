@@ -700,37 +700,44 @@
             }
         }
 
-        // 检查支付返回状态
+        // 改进检查支付返回状态的函数
         function checkPaymentReturnStatus() {
             console.log('[INFO] 检查支付返回状态');
             
             // 使用不同的变量名
             const paymentParams = new URLSearchParams(window.location.search);
             
-            // 如果URL中含有支付相关参数，如trade_status=TRADE_SUCCESS
-            if (paymentParams.has('trade_status') || paymentParams.has('result')) {
-                const tradeStatus = paymentParams.get('trade_status');
-                const result = paymentParams.get('result');
-                const outTradeNo = paymentParams.get('out_trade_no');
+            // 检查多种可能的支付成功参数
+            const paymentSuccess = paymentParams.get('payment_success') === 'true';
+            const tradeStatus = paymentParams.get('trade_status') === 'TRADE_SUCCESS';
+            const resultSuccess = paymentParams.get('result') === 'success';
+            
+            // 尝试从不同参数获取订单号
+            const orderId = paymentParams.get('order_id') || paymentParams.get('out_trade_no');
+            
+            console.log('[INFO] 支付参数检查:', { 
+                paymentSuccess, 
+                tradeStatus, 
+                resultSuccess,
+                orderId,
+                hasParams: paymentParams.toString()
+            });
+            
+            // 如果有任何支付成功的标记且有订单号
+            if ((paymentSuccess || tradeStatus || resultSuccess) && orderId) {
+                console.log('[INFO] 检测到支付成功，处理订单:', orderId);
                 
-                console.log('[INFO] 检测到支付返回:', { tradeStatus, result, outTradeNo });
+                // 从会话存储中获取之前保存的订单号
+                const storedOrderId = sessionStorage.getItem('currentOrderId');
                 
-                // 如果是成功支付或者返回成功
-                if ((tradeStatus === 'TRADE_SUCCESS' || result === 'success') && outTradeNo) {
-                    console.log('[INFO] 支付成功，处理订单:', outTradeNo);
-                    
-                    // 从会话存储中获取之前保存的订单号
-                    const storedOrderId = sessionStorage.getItem('currentOrderId');
-                    
-                    // 验证订单号匹配
-                    if (storedOrderId && storedOrderId === outTradeNo) {
-                        console.log('[INFO] 订单号匹配，处理支付成功');
-                        handlePaymentSuccessAfterReturn(outTradeNo);
-                    } else {
-                        // 即使不匹配，也尝试使用返回的订单号
-                        console.log('[WARN] 订单号不匹配，使用返回的订单号');
-                        handlePaymentSuccessAfterReturn(outTradeNo);
-                    }
+                if (storedOrderId && storedOrderId === orderId) {
+                    console.log('[INFO] 订单号匹配，处理支付成功');
+                    handlePaymentSuccessAfterReturn(orderId);
+                } else {
+                    // 即使不匹配，也尝试使用返回的订单号
+                    console.log('[WARN] 订单号不匹配，使用返回的订单号:',
+                        {stored: storedOrderId, returned: orderId});
+                    handlePaymentSuccessAfterReturn(orderId);
                 }
             }
         }
