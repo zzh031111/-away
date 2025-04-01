@@ -475,17 +475,8 @@
                     const selectedPlan = selectedPlanElement.value;
                     console.log('[INFO] 选择的套餐:', selectedPlan);
                     
-                    // 从页面中获取信息 - 如果模态框内有手机号输入框则使用，否则使用主页面的手机号
-                    let phone = '';
-                    const modalPhone = document.getElementById('modalPhone');
-                    const mainPhone = document.getElementById('phone');
-                    
-                    if (modalPhone && modalPhone.value) {
-                        phone = modalPhone.value;
-                    } else if (mainPhone && mainPhone.value) {
-                        phone = mainPhone.value;
-                    }
-                    
+                    // 从页面中获取信息
+                    const phone = document.getElementById('phone') ? document.getElementById('phone').value : '';
                     console.log('[INFO] 电话号码:', phone);
                     
                     if (!phone) {
@@ -502,32 +493,12 @@
                     
                     // 如果是双人套餐，检查用户本人配置
                     if (selectedPlan === 'dual') {
-                        // 使用正确的元素ID
-                        const userOpenid = document.getElementById('userOpenid');
-                        const locationName = document.getElementById('locationName');
-                        const admName = document.getElementById('admName');
-                        
-                        if (!userOpenid || !userOpenid.value) {
-                            alert('您选择了双人套餐，但未填写您的微信OpenID');
-                            return;
-                        }
-                        
-                        if (!locationName || !locationName.value) {
-                            alert('您选择了双人套餐，但未填写您所在的区/县');
-                            return;
-                        }
-                        
-                        if (!admName || !admName.value) {
-                            alert('您选择了双人套餐，但未填写您所在的城市');
+                        const userConfig = collectUserConfigData();
+                        if (!validateUserConfig(userConfig)) {
                             return;
                         }
                         
                         // 保存个人配置到sessionStorage
-                        const userConfig = collectUserConfigData(config);
-                        if (!userConfig) {
-                            alert('用户配置收集失败');
-                            return;
-                        }
                         sessionStorage.setItem('pendingUserConfig', JSON.stringify(userConfig));
                     }
                     
@@ -536,7 +507,8 @@
                     sessionStorage.setItem('pendingConfig', JSON.stringify(config));
                     sessionStorage.setItem('pendingPlan', selectedPlan);
                     
-                    // 显示加载中状态 - 增加安全检查
+                    // 显示加载中状态
+                    const loadingSpinner = document.getElementById('loadingSpinner');
                     if (loadingSpinner) {
                         loadingSpinner.style.display = 'block';
                     }
@@ -575,32 +547,19 @@
                         if (data.success) {
                             console.log('[INFO] 订单创建成功:', data.order_id);
                             
-                            // 显示支付二维码
-                            const qrcodeSection = document.getElementById('qrcodeSection');
-                            const paymentQrcode = document.getElementById('paymentQrcode');
-                            const paymentLink = document.getElementById('paymentLink');
-                            const paymentCompleteButton = document.getElementById('paymentCompleteButton');
+                            // 保存订单信息
+                            sessionStorage.setItem('currentOrderId', data.order_id);
                             
-                            if (qrcodeSection && paymentQrcode && paymentLink && paymentCompleteButton) {
-                                // 更新二维码图片
-                                paymentQrcode.src = data.qrcode_url;
-                                
-                                // 更新支付链接
-                                paymentLink.href = data.payment_url;
-                                paymentLink.style.display = 'inline-block';
-                                
-                                // 显示二维码区域和完成按钮
-                                qrcodeSection.style.display = 'block';
-                                paymentCompleteButton.style.display = 'inline-block';
-                                
-                                // 开始检查支付状态
-                                trackPaymentStatus(data.order_id);
-                            } else {
-                                console.error('[ERROR] 无法找到必要的支付UI元素');
-                                alert('显示支付信息失败，请刷新页面重试');
-                            }
+                            // 不显示二维码，直接跳转到支付页面
+                            window.location.href = data.payment_url;
                         } else {
                             alert('创建订单失败: ' + (data.message || '未知错误'));
+                            
+                            // 恢复UI状态
+                            if (planSelection) {
+                                planSelection.style.display = 'block';
+                            }
+                            this.style.display = 'inline-block';
                         }
                     })
                     .catch(error => {
@@ -621,6 +580,7 @@
                     alert('处理订阅请求出错: ' + error.message);
                     
                     // 恢复UI状态
+                    const loadingSpinner = document.getElementById('loadingSpinner');
                     if (loadingSpinner) {
                         loadingSpinner.style.display = 'none';
                     }
@@ -676,6 +636,39 @@
             document.getElementById('modalPriceMonthly').textContent = '24.9';
             document.getElementById('modalPriceAnnual').textContent = '29.9';
             document.getElementById('modalPriceDual').textContent = '1';
+
+            // 添加页面加载时的支付状态检测
+            console.log('[INFO] 页面加载完成，检查支付状态');
+            
+            // 检查URL参数判断是否支付完成返回
+            const urlParams = new URLSearchParams(window.location.search);
+            
+            // 如果URL中含有支付相关参数，如trade_status=TRADE_SUCCESS
+            if (urlParams.has('trade_status') || urlParams.has('result')) {
+                const tradeStatus = urlParams.get('trade_status');
+                const result = urlParams.get('result');
+                const outTradeNo = urlParams.get('out_trade_no');
+                
+                console.log('[INFO] 检测到支付返回:', { tradeStatus, result, outTradeNo });
+                
+                // 如果是成功支付或者返回成功
+                if ((tradeStatus === 'TRADE_SUCCESS' || result === 'success') && outTradeNo) {
+                    console.log('[INFO] 支付成功，处理订单:', outTradeNo);
+                    
+                    // 从会话存储中获取之前保存的订单号
+                    const storedOrderId = sessionStorage.getItem('currentOrderId');
+                    
+                    // 验证订单号匹配
+                    if (storedOrderId && storedOrderId === outTradeNo) {
+                        console.log('[INFO] 订单号匹配，处理支付成功');
+                        handlePaymentSuccessAfterReturn(outTradeNo);
+                    } else {
+                        // 即使不匹配，也尝试使用返回的订单号
+                        console.log('[WARN] 订单号不匹配，使用返回的订单号');
+                        handlePaymentSuccessAfterReturn(outTradeNo);
+                    }
+                }
+            }
         });
         
         // 改进价格获取函数，增加错误处理和重试逻辑
@@ -1145,16 +1138,39 @@
             saveConfigToServer();
         }
 
-        // 保存配置到服务器
+        // 支付成功后返回处理函数
+        function handlePaymentSuccessAfterReturn(orderId) {
+            console.log('[INFO] 处理支付成功后的返回:', orderId);
+            
+            // 显示支付成功消息
+            alert('支付成功！订单号: ' + orderId);
+            
+            // 保存配置到服务器
+            saveConfigToServer();
+            
+            // 清除URL参数，避免刷新页面重复处理
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+
+        // 修改保存配置到服务器函数，添加更多日志
         function saveConfigToServer() {
             try {
+                console.log('[INFO] 开始保存配置到服务器');
                 const config = JSON.parse(sessionStorage.getItem('pendingConfig') || '{}');
                 const phone = sessionStorage.getItem('pendingPhone');
                 const plan = sessionStorage.getItem('pendingPlan');
                 const orderId = sessionStorage.getItem('currentOrderId');
                 
+                console.log('[INFO] 恢复的配置信息:', {
+                    hasConfig: Object.keys(config).length > 0,
+                    phone,
+                    plan,
+                    orderId
+                });
+                
                 if (!config || !phone || !plan || !orderId) {
                     console.error('[ERROR] 保存配置缺少必要信息');
+                    alert('配置信息不完整，请重新填写配置并支付');
                     return;
                 }
                 
@@ -1163,9 +1179,13 @@
                     const userConfig = JSON.parse(sessionStorage.getItem('pendingUserConfig') || '{}');
                     if (userConfig && userConfig.user_openid) {
                         config.user_config = userConfig;
+                        console.log('[INFO] 添加用户个人配置');
+                    } else {
+                        console.warn('[WARN] 双人套餐但未找到用户配置');
                     }
                 }
                 
+                console.log('[INFO] 提交配置到服务器');
                 // 提交配置到服务器
                 fetch(`${API_BASE_URL}/api/save-config`, {
                     method: 'POST',
@@ -1182,12 +1202,26 @@
                 .then(response => response.json())
                 .then(data => {
                     console.log('[INFO] 配置保存结果:', data);
+                    if (data.success) {
+                        alert('配置保存成功！您的服务已激活');
+                        
+                        // 清除会话存储中的临时数据
+                        sessionStorage.removeItem('pendingConfig');
+                        sessionStorage.removeItem('pendingPhone');
+                        sessionStorage.removeItem('pendingPlan');
+                        sessionStorage.removeItem('pendingUserConfig');
+                        sessionStorage.removeItem('currentOrderId');
+                    } else {
+                        alert('配置保存失败: ' + (data.message || '未知错误'));
+                    }
                 })
                 .catch(error => {
                     console.error('[ERROR] 保存配置失败:', error);
+                    alert('保存配置失败: ' + error.message);
                 });
             } catch (error) {
                 console.error('[ERROR] 处理配置保存错误:', error);
+                alert('处理配置时出错: ' + error.message);
             }
         }
     </script>
