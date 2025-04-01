@@ -71,6 +71,24 @@
             margin-top: 20px;
         }
     </style>
+    <!-- Google Analytics 代码 -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=YOUR_ANALYTICS_ID"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'YOUR_ANALYTICS_ID');
+    </script>
+    <!-- 百度统计代码 -->
+    <script>
+        var _hmt = _hmt || [];
+        (function() {
+            var hm = document.createElement("script");
+            hm.src = "https://hm.baidu.com/hm.js?YOUR_SITE_ID";
+            var s = document.getElementsByTagName("script")[0]; 
+            s.parentNode.insertBefore(hm, s);
+        })();
+    </script>
 </head>
 <body>
     <div class="container">
@@ -84,34 +102,44 @@
                 <li>请确保带<strong style="color: red;">*</strong>号的必填信息准确无误，特别是<strong>AppID和AppSecret</strong></li>
             </ol>
         </div>
-
-        <h2 class="text-center mb-4">微信早安晚安推送配置</h2>
-
+        
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2>微信推送配置</h2>
+                </div>
+                
         <!-- 使用前必看教程 -->
         <div class="tutorial-link">
             <strong>重要提示：</strong> 使用前请务必查看 <a href="https://bcn1jsdnj3t6.feishu.cn/wiki/DRsNwylmAiJxVokNmfnczd5XnMa" target="_blank" rel="noopener noreferrer">详细使用教程</a>，了解各项配置含义及获取方法！
-        </div>
-        
-        <!-- 认证区域 -->
-        <div class="auth-section">
-            <h4>用户登录/注册</h4>
-            <div class="user-status" id="userStatus">状态：未登录</div>
-            <form id="authForm">
-                <div class="mb-3">
-                    <label for="phone" class="form-label required">手机号</label>
-                    <input type="tel" class="form-control" id="phone" name="phone" required pattern="^1[3-9]\d{9}$" title="请输入有效的11位手机号">
                 </div>
-                <div class="mb-3">
-                    <label for="password" class="form-label required">密码</label>
-                    <input type="password" class="form-control" id="password" name="password" required minlength="6">
+                
+        <!-- 添加套餐选择部分，包含新的年付52元套餐 -->
+        <div class="mb-4">
+            <h4>请选择订阅套餐</h4>
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="radio" name="plan" id="planMonthly" value="monthly" checked>
+                <label class="form-check-label" for="planMonthly">
+                    月付 <span id="priceMonthly">1</span>元 - 每天自动发送早安问候给伴侣
+                </label>
                 </div>
-                <button type="button" class="btn btn-primary me-2" id="loginButton">登录</button>
-                <button type="button" class="btn btn-success" id="registerButton">注册并配置</button>
-                <button type="button" class="btn btn-secondary" id="logoutButton" style="display: none;">退出登录</button>
-            </form>
-            <div id="authMessage" class="alert mt-3" style="display: none;"></div>
-        </div>
-        
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="radio" name="plan" id="planAnnual" value="annual">
+                <label class="form-check-label" for="planAnnual">
+                    年付 <span id="priceAnnual">2</span>元 - 每天自动发送早安问候给伴侣（相当于<span id="discountMonthly">免费用1个月</span>）
+                </label>
+                </div>
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="radio" name="plan" id="planDual" value="dual">
+                <label class="form-check-label" for="planDual">
+                    年付 <span id="priceDual">52</span>元 - 每天同时自动发送早安问候给您和伴侣
+                </label>
+                </div>
+                </div>
+                
+        <!-- 添加配置区域标题 -->
+        <div class="mb-3">
+            <h4>伴侣微信配置</h4>
+                </div>
+                
         <!-- 配置区域 -->
         <div class="config-section" id="configSection">
             <h4>详细配置信息</h4>
@@ -123,37 +151,37 @@
                     <div class="col-md-6">
                         <label for="app_id" class="form-label required">微信公众号AppID</label>
                         <input type="text" class="form-control" id="app_id" name="app_id" required>
-                    </div>
+                </div>
                     <div class="col-md-6">
                         <label for="app_secret" class="form-label required">微信公众号AppSecret</label>
                         <input type="password" class="form-control" id="app_secret" name="app_secret" required>
-                    </div>
+                </div>
                 </div>
                 <div class="row mb-3">
                     <div class="col-md-6">
                         <label for="user_openid" class="form-label required">接收消息用户的OpenID</label>
                         <input type="text" class="form-control" id="user_openid" name="user_openid" required>
                     </div>
-                    <div class="col-md-6">
+                            <div class="col-md-6">
                         <label for="template_id" class="form-label required">早安模板ID</label>
                         <input type="text" class="form-control" id="template_id" name="template_id" required>
-                    </div>
-                </div>
+                                    </div>
+                                    </div>
                 <div class="row mb-3">
                     <div class="col-md-6">
                         <label for="indices_template_id" class="form-label">天气指数模板ID (可选)</label>
                         <input type="text" class="form-control" id="indices_template_id" name="indices_template_id">
-                    </div>
+                                </div>
                     <div class="col-md-6">
                         <label for="location_name" class="form-label required">天气查询-区县名</label>
                         <input type="text" class="form-control" id="location_name" name="location_name" required placeholder="例如: 朝阳区">
-                    </div>
+                            </div>
                 </div>
                 <div class="row mb-3">
-                    <div class="col-md-6">
+                            <div class="col-md-6">
                         <label for="adm_name" class="form-label required">天气查询-市/省名</label>
                         <input type="text" class="form-control" id="adm_name" name="adm_name" required placeholder="例如: 北京市 或 河北省">
-                    </div>
+                                    </div>
                     <div class="col-md-6">
                         <label for="meet_date" class="form-label">相爱纪念日 (可选)</label>
                         <input type="date" class="form-control" id="meet_date" name="meet_date">
@@ -179,6 +207,25 @@
             <div id="successMessage" class="alert alert-success" style="display: none;"></div>
             <div id="errorMessage" class="alert alert-danger" style="display: none;"></div>
         </div>
+
+        <!-- 添加用户本人配置区域，仅在选择双人套餐时显示 -->
+        <div id="userConfigSection" class="mt-4" style="display: none;">
+            <h4>您的个人微信配置</h4>
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <label for="user_openid" class="form-label">您的微信OpenID</label>
+                    <input type="text" class="form-control" id="user_openid" placeholder="请输入您的微信OpenID">
+                </div>
+                <div class="col-md-6">
+                    <label for="user_location_name" class="form-label">您所在的区县</label>
+                    <input type="text" class="form-control" id="user_location_name" placeholder="例如：海淀区">
+                </div>
+                <div class="col-md-6">
+                    <label for="user_adm_name" class="form-label">您所在的城市</label>
+                    <input type="text" class="form-control" id="user_adm_name" placeholder="例如：北京市">
+                </div>
+            </div>
+        </div>
     </div>
     
     <!-- 支付模态框 -->
@@ -188,7 +235,7 @@
                 <div class="modal-header">
                     <h5 class="modal-title">订阅计划</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
+                                    </div>
                 <div class="modal-body">
                     <!-- 计划选择部分 -->
                     <div id="planSelection">
@@ -197,24 +244,24 @@
                             <h5>月度订阅</h5>
                             <p class="mb-1">价格: <span class="price-monthly">24.90</span>元/月</p>
                             <p class="mb-0 text-muted">每月自动续费，可随时取消</p>
-                        </div>
+                                </div>
                         <div class="plan-option" data-plan="annual">
                             <h5>年度订阅</h5>
                             <p class="mb-1">价格: <span class="price-annual">59.90</span>元/年</p>
                             <p class="mb-0 text-muted">比月付更划算，节省80%</p>
+                            </div>
                         </div>
-                    </div>
-                    
+
                     <!-- 支付加载中状态 -->
                     <div id="paymentLoading" style="display:none;">
                         <div class="text-center py-4">
                             <div class="spinner-border text-primary" role="status">
                                 <span class="visually-hidden">加载中...</span>
-                            </div>
-                            <p class="mt-3">正在创建支付订单，请稍候...</p>
                         </div>
+                            <p class="mt-3">正在创建支付订单，请稍候...</p>
                     </div>
-                    
+                </div>
+                
                     <!-- 支付信息显示 -->
                     <div id="paymentInfo" style="display:none;">
                         <p id="paymentStatus" class="text-center mb-3">请完成支付...</p>
@@ -225,22 +272,22 @@
                             <button id="directPayButton" class="btn btn-primary btn-sm" style="display:none;">
                                 打开支付页面
                             </button>
-                        </div>
-                        
+                </div>
+                
                         <!-- 表单重定向支付 -->
                         <div id="formRedirectContainer" class="text-center py-2" style="display:none;">
                             <p>即将跳转到支付页面，请稍候...</p>
                             <div id="formRedirectContent"></div>
-                        </div>
-                        
+                </div>
+                
                         <!-- 支付链接 -->
                         <div id="paymentLinkContainer" class="text-center py-2" style="display:none;">
                             <a id="paymentLink" href="#" class="btn btn-success" target="_blank">
                                 点击前往支付
                             </a>
-                        </div>
-                    </div>
-                    
+                </div>
+        </div>
+        
                     <!-- 支付错误信息 -->
                     <div id="paymentError" class="alert alert-danger" style="display:none;"></div>
                 </div>
@@ -252,9 +299,9 @@
         </div>
     </div>
     
-    <!-- 添加到页面底部 - 客服联系信息 -->
-    <footer class="mt-5 pt-4 border-top text-center text-muted">
-        <p class="small">如有任何问题，请联系客服：微信：perrt_u</p>
+    <!-- 修改页脚联系信息 -->
+    <footer class="mt-5 text-center text-muted">
+        <p>微信公众号：简的小屋子，发送你的问题，我们将为您提供服务。</p>
     </footer>
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -268,9 +315,9 @@
         const saveConfigButton = document.getElementById('saveConfigButton');
         const testSendButton = document.getElementById('testSendButton');
         const authMessage = document.getElementById('authMessage');
-        const loadingMessage = document.getElementById('loadingMessage');
-        const successMessage = document.getElementById('successMessage');
-        const errorMessage = document.getElementById('errorMessage');
+            const loadingMessage = document.getElementById('loadingMessage');
+            const successMessage = document.getElementById('successMessage');
+            const errorMessage = document.getElementById('errorMessage');
         const configSection = document.getElementById('configSection');
         const userStatus = document.getElementById('userStatus');
         const paymentModalElement = document.getElementById('paymentModal');
@@ -1052,9 +1099,9 @@
                 showDetailedMessage(loadingMessage, '正在保存配置...', '', 'info');
                 
                 const response = await fetch(`${API_BASE_URL}/api/config/update`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
                         'Authorization': `Bearer ${authToken || ''}`
                     },
                     body: JSON.stringify({
@@ -1088,7 +1135,7 @@
                     try {
                         // 刷新价格信息
                         await fetchPlanPrices();
-                    } catch (e) {
+                } catch (e) {
                         console.warn("获取最新价格失败，将使用默认价格");
                     }
                     
@@ -1223,7 +1270,7 @@
                                 console.error('自动提交表单失败:', err);
                             }
                         }, 500);
-                    } else {
+                        } else {
                         // 显示支付链接
                         document.getElementById('paymentLinkContainer').style.display = 'block';
                         document.getElementById('paymentLink').href = result.payment_info.payment_url;
@@ -1314,7 +1361,7 @@
                             
                             // 显示配置部分
                             configSection.style.display = 'block';
-                        }, 3000);
+                    }, 3000);
                         
                         return;
                     }
@@ -1365,6 +1412,222 @@
                 console.error('获取价格信息失败:', error);
             }
         }
+
+        // 在document ready事件中添加的处理函数
+        document.addEventListener('DOMContentLoaded', function() {
+            // 获取价格信息
+            fetchPriceInfo();
+            
+            // 显示/隐藏用户配置部分
+            document.querySelectorAll('input[name="plan"]').forEach(function(radio) {
+                radio.addEventListener('change', function() {
+                    if (this.value === 'dual') {
+                        document.getElementById('userConfigSection').style.display = 'block';
+                } else {
+                        document.getElementById('userConfigSection').style.display = 'none';
+                    }
+                });
+            });
+
+            // 修改提交配置表单事件处理
+            document.getElementById('configForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                // 收集伴侣配置信息
+                const config = {
+                    user_id: document.getElementById('phone').value,
+                    app_id: document.getElementById('app_id').value,
+                    app_secret: document.getElementById('app_secret').value,
+                    template_id: document.getElementById('template_id').value,
+                    indices_template_id: document.getElementById('indices_template_id').value,
+                    user_openid: document.getElementById('user_openid').value,
+                    location_name: document.getElementById('location_name').value,
+                    adm_name: document.getElementById('adm_name').value,
+                    meet_date: document.getElementById('meet_date').value,
+                    partner_birthday: document.getElementById('partner_birthday').value,
+                    xiazhou_birthday: document.getElementById('xiazhou_birthday').value
+                };
+                
+                // 获取选中的套餐类型
+                const plan = document.querySelector('input[name="plan"]:checked').value;
+                
+                // 创建订单并处理支付
+                createOrderAndPay(config, plan);
+            });
+
+            // 修改测试发送按钮事件处理
+            document.getElementById('testButton').addEventListener('click', function() {
+                // 收集伴侣配置信息
+                const partnerConfig = {
+                    user_id: document.getElementById('phone').value,
+                    app_id: document.getElementById('app_id').value,
+                    app_secret: document.getElementById('app_secret').value,
+                    template_id: document.getElementById('template_id').value,
+                    indices_template_id: document.getElementById('indices_template_id').value,
+                    user_openid: document.getElementById('user_openid').value,
+                    location_name: document.getElementById('location_name').value,
+                    adm_name: document.getElementById('adm_name').value,
+                    meet_date: document.getElementById('meet_date').value,
+                    partner_birthday: document.getElementById('partner_birthday').value,
+                    xiazhou_birthday: document.getElementById('xiazhou_birthday').value
+                };
+                
+                // 发送给伴侣的早安问候
+                sendTestMessage(partnerConfig, false);
+                
+                // 如果选择了双人套餐，也发送给用户本人
+                const plan = document.querySelector('input[name="plan"]:checked').value;
+                if (plan === 'dual') {
+                    // 创建用户本人的配置，基于伴侣配置
+                    const userConfig = {...partnerConfig};
+                    
+                    // 用户的OpenID和地理位置
+                    userConfig.user_openid = document.getElementById('user_openid').value;
+                    userConfig.location_name = document.getElementById('user_location_name').value;
+                    userConfig.adm_name = document.getElementById('user_adm_name').value;
+                    
+                    // 交换生日信息
+                    [userConfig.partner_birthday, userConfig.xiazhou_birthday] = 
+                        [userConfig.xiazhou_birthday, userConfig.partner_birthday];
+                    
+                    // 发送给用户本人的早安问候
+                    sendTestMessage(userConfig, true);
+                }
+            });
+        });
+
+        // 修改或添加辅助函数
+        function createOrderAndPay(config, plan) {
+            // 显示加载中提示
+            document.getElementById('loadingSpinner').style.display = 'block';
+            
+            // 获取手机号码和密码
+            const phone = document.getElementById('phone').value;
+            
+            // 创建订单
+            fetch(`${API_BASE_URL}/api/payment/create`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    phone: phone,
+                    plan: plan,
+                    config: config
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 保存订单信息和配置到会话
+                    sessionStorage.setItem('pendingConfig', JSON.stringify(config));
+                    sessionStorage.setItem('pendingPhone', phone);
+                    sessionStorage.setItem('pendingPlan', plan);
+                    sessionStorage.setItem('currentOrderId', data.order_id);
+                    
+                    // 根据返回类型处理支付
+                    if (data.payment_info.payment_type === 'qrcode') {
+                        // 显示二维码
+                        document.getElementById('qrCodeImage').src = data.payment_info.qr_code_url;
+                        document.getElementById('qrCodeModal').style.display = 'block';
+                    } else if (data.payment_info.payment_type === 'form_redirect') {
+                        // 创建并提交表单，跳转到支付页面
+                        const formContainer = document.createElement('div');
+                        formContainer.innerHTML = data.payment_info.redirect_form;
+                        document.body.appendChild(formContainer);
+                    }
+                } else {
+                    alert(data.message || '创建订单失败');
+                }
+                document.getElementById('loadingSpinner').style.display = 'none';
+            })
+            .catch(error => {
+                console.error('创建订单失败:', error);
+                alert('创建订单失败，请稍后再试');
+                document.getElementById('loadingSpinner').style.display = 'none';
+            });
+        }
+
+        // 添加支付完成回调处理的代码
+        function paymentSuccess() {
+            // 处理双人套餐的情况
+            const plan = sessionStorage.getItem('pendingPlan');
+            const phone = sessionStorage.getItem('pendingPhone');
+            const config = JSON.parse(sessionStorage.getItem('pendingConfig') || '{}');
+            
+            // 保存伴侣配置
+            saveUserConfig(phone, config, plan, false);
+            
+            // 如果是双人套餐，还需保存用户本人的配置
+            if (plan === 'dual') {
+                // 创建用户本人的配置
+                const userConfig = {...config};
+                
+                // 用户的OpenID和地理位置
+                userConfig.user_openid = document.getElementById('user_openid').value;
+                userConfig.location_name = document.getElementById('user_location_name').value;
+                userConfig.adm_name = document.getElementById('user_adm_name').value;
+                
+                // 交换生日信息
+                [userConfig.partner_birthday, userConfig.xiazhou_birthday] = 
+                    [userConfig.xiazhou_birthday, userConfig.partner_birthday];
+                    
+                // 保存用户配置
+                saveUserConfig(phone, userConfig, plan, true);
+            }
+        }
+
+        // 保存用户配置到服务器
+        function saveUserConfig(phone, config, plan, isUserConfig) {
+            fetch(`${API_BASE_URL}/api/payment/complete-setup`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    phone: phone,
+                    config: config,
+                    plan: plan,
+                    order_id: sessionStorage.getItem('currentOrderId'),
+                    is_user_config: isUserConfig
+                })
+            })
+            .then(response => response.json())
+            .then(result => {
+                console.log('配置保存结果:', result);
+            })
+            .catch(error => {
+                console.error('保存配置失败:', error);
+            });
+        }
+
+        // 发送测试消息
+        function sendTestMessage(config, isUser) {
+            document.getElementById('loadingSpinner').style.display = 'block';
+            
+            // 调用morning_greeting云函数发送测试消息
+            fetch('https://服务函数地址/morning_greeting', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(config)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const recipient = isUser ? '您' : '伴侣';
+                    alert(`发送给${recipient}的测试消息成功！`);
+                } else {
+                    const recipient = isUser ? '您' : '伴侣';
+                    alert(`发送给${recipient}的测试消息失败: ${data.message}`);
+                }
+                document.getElementById('loadingSpinner').style.display = 'none';
+            })
+            .catch(error => {
+                console.error('发送测试消息失败:', error);
+                const recipient = isUser ? '您' : '伴侣';
+                alert(`发送给${recipient}的测试消息失败，请检查配置信息`);
+                document.getElementById('loadingSpinner').style.display = 'none';
+            });
+        }
     </script>
+    
+    <!-- 51LA统计代码 - 放在body结束标签前 -->
+    <script type="text/javascript" src="//js.users.51.la/21954557.js"></script>
 </body>
 </html> 
