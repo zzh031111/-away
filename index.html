@@ -1,819 +1,1303 @@
-# index.py (原web_api.py)
-import json
-import os
-import sys  # 添加这行
-import logging
-import traceback
-import time
-import hmac
-import hashlib
-from datetime import datetime, timedelta
-# 使用 Werkzeug 进行密码哈希，需要安装: pip install Werkzeug
-from werkzeug.security import generate_password_hash, check_password_hash
-# 使用 PyJWT 进行 Token 生成和验证，需要安装: pip install PyJWT
-# import jwt
-from flask import Flask, request, jsonify, send_from_directory
-from qcloud_cos import CosConfig, CosS3Client
-from flask_cors import CORS  # 导入CORS
-import requests
-import random
-import re
-
-# 导入腾讯云SDK相关模块
-from tencentcloud.common import credential
-from tencentcloud.common.profile.client_profile import ClientProfile
-from tencentcloud.common.profile.http_profile import HttpProfile
-from tencentcloud.common.exception.tencent_cloud_sdk_exception import TencentCloudSDKException
-from tencentcloud.scf.v20180416 import scf_client, models as scf_models
-
-# 在文件开头导入支付工具
-# from payments_utils.payment_utils import PaymentConfig, PaymentService, generate_order_id
-
-# 配置日志
-logger = logging.getLogger('web_api')
-logger.setLevel(logging.INFO)
-
-# 添加日志处理器，确保日志被正确输出
-handler = logging.StreamHandler()
-handler.setLevel(logging.INFO)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-handler.setFormatter(formatter)
-if not logger.handlers:  # 防止多次添加handler
-    logger.addHandler(handler)
-
-# JWT 配置暂时注释掉
-# JWT_SECRET = os.environ.get('JWT_SECRET', 'YOUR_VERY_STRONG_SECRET_KEY_CHANGE_ME')
-# JWT_ALGORITHM = 'HS256'
-# JWT_EXPIRATION_DELTA = timedelta(days=7) # Token 有效期
-
-# 支付配置 (示例，需要替换为您选择的支付提供商信息)
-PAYMENT_PROVIDER_API_KEY = os.environ.get('PAYMENT_PROVIDER_API_KEY', 'YOUR_PAYMENT_API_KEY')
-PAYMENT_PROVIDER_SECRET = os.environ.get('PAYMENT_PROVIDER_SECRET', 'YOUR_PAYMENT_SECRET')
-
-# 在程序开始时安全地获取环境变量，避免访问不存在的变量
-def get_env(name, default=''):
-    """安全获取环境变量"""
-    return os.environ.get(name, default)
-
-# 使用该函数替代直接的环境变量访问
-PAYMENT_RETURN_URL = get_env('PAYMENT_RETURN_URL', 'https://ai.kaxsx.top')
-PAYMENT_NOTIFY_URL = get_env('PAYMENT_NOTIFY_URL', '')
-PAYMENT_PID = get_env('PAYMENT_PID', '')
-PAYMENT_KEY = get_env('PAYMENT_KEY', '')
-
-# 定义支付相关的类和函数 - 移到这里，在使用前定义
-def generate_order_id():
-    """生成订单号"""
-    return f"WX{int(time.time())}{str(int(time.time()*1000))[-3:]}"
-
-class PaymentConfig:
-    """支付配置"""
-    def __init__(self):
-        self.API_URL = 'https://z-pay.cn/submit.php'
-        self.QUERY_URL = 'https://z-pay.cn/api.php'
-        self.PID = ''  # 您的商户ID
-        self.KEY = ''  # 您的商户密钥
-        self.NOTIFY_URL = ''  # 异步通知地址
-        self.RETURN_URL = ''  # 同步跳转地址
-
-    def load_from_env(self):
-        """从环境变量加载配置"""
-        self.PID = os.environ.get('PAYMENT_PID', '')
-        self.KEY = os.environ.get('PAYMENT_KEY', '')
-        self.NOTIFY_URL = os.environ.get('PAYMENT_NOTIFY_URL', '')
-        self.RETURN_URL = os.environ.get('PAYMENT_RETURN_URL', '')
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>微信早安推送配置</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
+    <style>
+        body { padding-top: 20px; background-color: #f8f9fa; }
+        .container { max-width: 700px; background-color: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        .form-label { font-weight: bold; }
+        .alert { margin-top: 20px; }
+        .required::after { content: '*'; color: red; margin-left: 2px; }
+        /* 新增样式 */
+        .auth-section { margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid #eee; }
+        .config-section { display: none; /* 默认隐藏配置区域 */ }
+        .user-status { margin-bottom: 15px; font-style: italic; }
+        .tutorial-link { margin-bottom: 20px; padding: 10px; background-color: #e9f5ff; border: 1px solid #b3d7ff; border-radius: 5px; }
+        .payment-modal-body { /* 支付模态框样式 */ }
+        .plan-option { border: 1px solid #ddd; padding: 15px; margin-bottom: 10px; border-radius: 5px; cursor: pointer; }
+        .plan-option.selected { border-color: #0d6efd; background-color: #e7f1ff; }
+        .plan-option h5 { margin-top: 0; }
+        .form-section {
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+            padding: 25px;
+            background-color: #fff;
+            margin-bottom: 30px;
+        }
         
-        # 验证必要配置
-        if not all([self.PID, self.KEY, self.NOTIFY_URL]):
-            logger.warning("支付配置不完整，请检查环境变量 - PID, KEY, NOTIFY_URL")
-            # 不抛出异常，只记录警告，以免阻止其他功能运行
+        .form-section h3 {
+            color: #3a5a78;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #eaeaea;
+        }
+        
+        .form-label.required:after {
+            content: "*";
+            color: red;
+            margin-left: 4px;
+        }
+        
+        .btn-primary {
+            background-color: #3a5a78;
+            border-color: #3a5a78;
+        }
+        
+        .btn-info {
+            background-color: #5bc0de;
+            border-color: #5bc0de;
+            color: white;
+        }
+        
+        .alert-custom-success {
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        
+        .alert-custom-error {
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+    </style>
+    <!-- Google Analytics 代码 -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=YOUR_ANALYTICS_ID"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'YOUR_ANALYTICS_ID');
+    </script>
+    <!-- 百度统计代码 -->
+    <script>
+        var _hmt = _hmt || [];
+        (function() {
+            var hm = document.createElement("script");
+            hm.src = "https://hm.baidu.com/hm.js?YOUR_SITE_ID";
+            var s = document.getElementsByTagName("script")[0]; 
+            s.parentNode.insertBefore(hm, s);
+        })();
+    </script>
+</head>
+<body>
+    <div class="container">
+        <div class="alert alert-warning mb-4 border-left border-warning" style="border-left: 5px solid #ffc107; font-size: 1.1rem;">
+            <h4 class="alert-heading text-center mb-3"><i class="bi bi-exclamation-triangle-fill me-2"></i>重要使用说明</h4>
+            <p>使用前请务必阅读<a href="https://bcn1jsdnj3t6.feishu.cn/wiki/DRsNwylmAiJxVokNmfnczd5XnMa" class="alert-link" target="_blank">详细使用教程</a>，了解各项配置含义以及获取方法！</p>
+            <hr>
+            <ol class="mb-0">
+                <li>您需要<strong>先测试发送</strong>确认配置正确，再保存配置</li>
+                <li>保存成功后，系统会<strong>每天自动发送</strong>天气、纪念日等信息</li>
+                <li>请确保带<strong style="color: red;">*</strong>号的必填信息准确无误，特别是<strong>AppID和AppSecret</strong></li>
+            </ol>
+        </div>
+        
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2>微信推送配置</h2>
+                </div>
+                
+        <!-- 使用前必看教程 -->
+        <div class="tutorial-link">
+            <strong>重要提示：</strong> 使用前请务必查看 <a href="https://bcn1jsdnj3t6.feishu.cn/wiki/DRsNwylmAiJxVokNmfnczd5XnMa" target="_blank" rel="noopener noreferrer">详细使用教程</a>，了解各项配置含义及获取方法！
+                </div>
+                
+        <!-- 用户认证表单 -->
+        <div id="authForm" class="mb-4">
+            <h4>用户信息</h4>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label for="phone" class="form-label">手机号码</label>
+                    <input type="tel" class="form-control" id="phone" placeholder="请输入手机号码">
+                </div>
+                <div class="col-md-6">
+                    <label for="password" class="form-label">密码</label>
+                    <input type="password" class="form-control" id="password" placeholder="请设置密码">
+                </div>
+            </div>
+                </div>
+                
+        <!-- 添加配置区域标题 -->
+        <div class="mb-3">
+            <h4>伴侣微信配置</h4>
+                </div>
+                
+        <!-- 配置区域 -->
+        <div class="config-section" id="configSection">
+            <form id="configForm">
+                <!-- 用户ID (登录后自动填充或隐藏) -->
+                <input type="hidden" id="user_id" name="user_id">
 
-class PaymentService:
-    """支付服务"""
-    def __init__(self, config: PaymentConfig):
-        self.config = config
-
-    def create_order(self, amount, order_id, product_name="微信推送服务", pay_type="alipay"):
-        """创建支付订单"""
-        try:
-            # 构建签名参数
-            params = {
-                'pid': self.config.PID,
-                'money': str(amount),
-                'name': product_name,
-                'out_trade_no': order_id,
-                'notify_url': self.config.NOTIFY_URL,
-                'return_url': self.config.RETURN_URL,
-                'type': pay_type,
-                'sitename': '微信推送服务'
-            }
-
-            # 生成签名
-            sign_str = '&'.join(f"{k}={v}" for k, v in sorted(params.items()))
-            sign = hashlib.md5((sign_str + self.config.KEY).encode('utf-8')).hexdigest()
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="app_id" class="form-label required">微信公众号AppID</label>
+                        <input type="text" class="form-control" id="app_id" name="app_id" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="app_secret" class="form-label required">微信公众号AppSecret</label>
+                        <input type="password" class="form-control" id="app_secret" name="app_secret" required>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="partner_openid" class="form-label required">伴侣的OpenID</label>
+                        <input type="text" class="form-control" id="partner_openid" name="user_openid" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="template_id" class="form-label required">早安模板ID</label>
+                        <input type="text" class="form-control" id="template_id" name="template_id" required>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="indices_template_id" class="form-label">天气指数模板ID (可选)</label>
+                        <input type="text" class="form-control" id="indices_template_id" name="indices_template_id">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="location_name" class="form-label required">天气查询-区县名</label>
+                        <input type="text" class="form-control" id="location_name" name="location_name" required placeholder="例如: 朝阳区">
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="adm_name" class="form-label required">天气查询-市/省名</label>
+                        <input type="text" class="form-control" id="adm_name" name="adm_name" required placeholder="例如: 北京市 或 河北省">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="meet_date" class="form-label">相爱纪念日 (可选)</label>
+                        <input type="date" class="form-control" id="meet_date" name="meet_date">
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="partner_birthday" class="form-label">你的生日 (可选)</label>
+                        <input type="date" class="form-control" id="partner_birthday" name="partner_birthday">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="xiazhou_birthday" class="form-label">Ta的生日 (可选)</label>
+                        <input type="date" class="form-control" id="xiazhou_birthday" name="xiazhou_birthday">
+                    </div>
+                </div>
+                
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                    <button id="testButton" type="button" class="btn btn-info me-md-2">
+                        <i class="bi bi-send"></i> 测试发送
+                    </button>
+                </div>
+            </form>
             
-            # 添加签名到参数
-            params['sign'] = sign
-            params['sign_type'] = 'MD5'
-
-            # 生成完整的支付URL
-            param_str = '&'.join(f"{k}={v}" for k, v in params.items())
-            pay_url = f"{self.config.API_URL}?{param_str}"
-
-            logger.info(f"生成支付订单成功: {order_id}")
-            return {
-                'success': True,
-                'pay_url': pay_url,
-                'order_id': order_id
-            }
-
-        except Exception as e:
-            logger.error(f"创建支付订单失败: {str(e)}")
-            return {
-                'success': False,
-                'message': f"创建支付订单失败: {str(e)}"
-            }
-
-    def query_order(self, order_id):
-        """查询订单状态"""
-        try:
-            # 构建查询参数
-            params = {
-                'act': 'order',
-                'pid': self.config.PID,
-                'key': self.config.KEY,
-                'out_trade_no': order_id
-            }
-
-            # 发送查询请求
-            url = f"{self.config.QUERY_URL}?" + '&'.join(f"{k}={v}" for k, v in params.items())
-            response = requests.get(url, timeout=10)
-            result = response.json()
-
-            logger.info(f"查询订单状态: {order_id}, 结果: {result}")
+            <hr class="my-4">
             
-            if result.get('code') == 1:  # 成功
-                return {
-                    'success': True,
-                    'paid': result.get('status') == 1,  # 1表示支付成功
-                    'trade_no': result.get('trade_no', ''),
-                    'message': '查询成功'
+            <!-- 用户本人配置区域 -->
+            <div id="userConfigSection" class="mt-4">
+                <h4>您的个人微信配置</h4>
+                <div class="form-section auth-section">
+                    <h3>个人信息配置</h3>
+                    <div class="mb-3">
+                        <label for="userOpenid" class="form-label required">您的微信OpenID</label>
+                        <input type="text" class="form-control" id="userOpenid" placeholder="请输入您的微信OpenID">
+                        <div class="form-text">用于接收每日通知的微信ID</div>
+                    </div>
+                    
+                    <!-- 添加模板ID输入字段 -->
+                    <div class="mb-3">
+                        <label for="userTemplateId" class="form-label required">您的模板ID</label>
+                        <input type="text" class="form-control" id="userTemplateId" placeholder="请输入您的微信模板ID">
+                        <div class="form-text">用于发送每日通知的模板ID</div>
+                                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="locationName" class="form-label required">区/县</label>
+                        <input type="text" class="form-control" id="locationName" placeholder="例如：海淀区">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="admName" class="form-label required">城市</label>
+                        <input type="text" class="form-control" id="admName" placeholder="例如：北京市">
+                                    </div>
+                                </div>
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                    <button id="testSelfButton" type="button" class="btn btn-info">
+                        <i class="bi bi-send"></i> 测试发送给您自己
+                    </button>
+                </div>
+                            </div>
+
+            <!-- 将所有区域的保存按钮放在最下方 -->
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                <button id="saveButton" type="button" class="btn btn-primary btn-lg">
+                    <i class="bi bi-check-circle"></i> 保存配置
+                </button>
+            </div>
+                                    </div>
+        
+        <!-- 加载中提示 -->
+        <div id="loadingSpinner" class="text-center mt-3" style="display: none;">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">加载中...</span>
+            </div>
+            <p class="mt-2">处理中，请稍候...</p>
+                                    </div>
+                                </div>
+    
+    <!-- 修改支付模态框，添加套餐选择 -->
+    <div class="modal fade" id="paymentModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">选择订阅方案</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- 套餐选择部分 -->
+                    <div id="planSelection">
+                        <h5 class="mb-3">请选择适合您的订阅方案：</h5>
+                        
+                        <div class="card mb-3">
+                            <div class="card-body">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="modal-plan" id="monthlyPlan" value="monthly" checked>
+                                    <label class="form-check-label w-100" for="monthlyPlan">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <h5 class="mb-1">月度套餐</h5>
+                                            <span class="badge bg-primary">¥<span id="modalPriceMonthly">24.9</span></span>
+                                        </div>
+                                        <p class="mb-1 text-muted">每天自动发送早安问候给伴侣</p>
+                                        <ul class="small text-muted mb-0 ps-3">
+                                            <li>包含天气、纪念日等个性化内容</li>
+                                            <li>有效期：30天</li>
+                                            <li>仅包含发送给伴侣的功能</li>
+                                        </ul>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card mb-3">
+                            <div class="card-body">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="modal-plan" id="annualPlan" value="annual">
+                                    <label class="form-check-label w-100" for="annualPlan">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <h5 class="mb-1">年度套餐</h5>
+                                            <span class="badge bg-primary">¥<span id="modalPriceAnnual">29.9</span></span>
+                                        </div>
+                                        <p class="mb-1 text-muted">每天自动发送早安问候给伴侣</p>
+                                        <ul class="small text-muted mb-0 ps-3">
+                                            <li>包含天气、纪念日等个性化内容</li>
+                                            <li>有效期：365天</li>
+                                            <li>仅包含发送给伴侣的功能</li>
+                                            <li class="text-success">比月付更划算，节省83%</li>
+                                        </ul>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card mb-3 border-success">
+                            <div class="card-header bg-success bg-opacity-10 text-success">
+                                <strong><i class="bi bi-star-fill"></i> 推荐套餐</strong>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="modal-plan" id="dualPlan" value="dual">
+                                    <label class="form-check-label w-100" for="dualPlan">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <h5 class="mb-1">双人年度套餐</h5>
+                                            <span class="badge bg-success">¥<span id="modalPriceDual">1</span></span>
+                                        </div>
+                                        <p class="mb-1 text-muted">每天同时向您和伴侣发送早安问候</p>
+                                        <ul class="small mb-0 ps-3">
+                                            <li>有效期：365天</li>
+                                            <li class="text-success"><strong>包含发送给您个人的功能</strong></li>
+                                            <li class="text-success"><strong>同时包含发送给伴侣的功能</strong></li>
+                                            <li class="text-success">双向推送，传递双倍的爱意</li>
+                                            <li class="text-success">最佳性价比选择</li>
+                                        </ul>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 二维码部分 -->
+                    <div id="qrcodeSection" style="display:none;" class="text-center">
+                        <h5 class="mb-3">请使用支付宝扫码支付</h5>
+                        <img id="paymentQrcode" src="" alt="支付二维码" class="img-fluid mb-3" style="max-width: 200px; border: 1px solid #eee; padding: 5px;">
+                        <div class="mb-3">
+                            <a id="paymentLink" href="#" target="_blank" class="btn btn-outline-primary" style="display:none;">
+                                <i class="bi bi-link-45deg"></i> 打开支付页面
+                            </a>
+                        </div>
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i> 支付完成后，请点击下方"我已完成支付"按钮
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer justify-content-between">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <div>
+                        <button id="confirmPaymentButton" type="button" class="btn btn-primary">确认订阅</button>
+                        <button id="paymentCompleteButton" type="button" class="btn btn-success" style="display:none;">我已完成支付</button>
+                </div>
+                </div>
+        </div>
+        </div>
+    </div>
+    
+    <!-- 修改页脚联系信息 -->
+    <footer class="mt-5 text-center text-muted">
+        <p>微信公众号：简的小屋子，发送你的问题，我们将为您提供服务。</p>
+    </footer>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // 使用实际的云函数URL
+        const API_BASE_URL = 'https://1337331310-2gg2yrldrk.ap-beijing.tencentscf.com'; // 微信配置云函数 
+        const MORNING_GREETING_URL = 'https://1337331310-kko6t1lktu.ap-beijing.tencentscf.com'; // 早安问候云函数
+        
+        // DOM元素
+        const configForm = document.getElementById('configForm');
+        const saveButton = document.getElementById('saveButton');
+        const testButton = document.getElementById('testButton');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+        const configSection = document.getElementById('configSection');
+        const confirmPaymentButton = document.getElementById('confirmPaymentButton');
+        const paymentCompleteButton = document.getElementById('paymentCompleteButton');
+        
+        // 支付相关
+        const paymentModal = new bootstrap.Modal(document.getElementById('paymentModal'));
+        
+        // 页面加载完成后执行
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('[INFO] 页面加载完成');
+            
+            try {
+                // 检查价格信息
+                if (typeof fetchPrices === 'function') {
+                    fetchPrices();
+                } else {
+                    console.error('[ERROR] fetchPrices函数未定义');
                 }
-            else:
-                return {
-                    'success': False,
-                    'message': result.get('msg', '查询失败')
+                
+                // 检查URL参数判断是否支付完成返回
+                if (typeof checkPaymentReturnStatus === 'function') {
+                    checkPaymentReturnStatus();
+                } else {
+                    console.error('[ERROR] checkPaymentReturnStatus函数未定义');
                 }
-
-        except Exception as e:
-            logger.error(f"查询订单状态失败: {str(e)}")
-            return {
-                'success': False,
-                'message': f"查询订单失败: {str(e)}"
-            }
-
-    def verify_notify(self, notify_data):
-        """验证支付回调通知"""
-        try:
-            # 提取签名
-            sign = notify_data.pop('sign', '')
-            sign_type = notify_data.pop('sign_type', '')
-            
-            if not sign:
-                return False
-                
-            # 生成签名字符串
-            sign_str = '&'.join(f"{k}={v}" for k, v in sorted(notify_data.items()))
-            local_sign = hashlib.md5((sign_str + self.config.KEY).encode('utf-8')).hexdigest()
-            
-            # 验证签名
-            is_valid = sign.lower() == local_sign.lower()
-            
-            if is_valid:
-                logger.info(f"支付回调验证成功: {notify_data.get('out_trade_no')}")
-            else:
-                logger.warning(f"支付回调验证失败: {notify_data.get('out_trade_no')}")
-                
-            return is_valid
-            
-        except Exception as e:
-            logger.error(f"验证支付回调失败: {str(e)}")
-            return False
-
-# COS配置
-def get_cos_client():
-    config = CosConfig(
-        Region=os.environ.get('COS_REGION', os.environ.get('REGION')),
-        SecretId=os.environ.get('SECRETID'),
-        SecretKey=os.environ.get('SECRETKEY')
-    )
-    return CosS3Client(config)
-
-# SCF客户端配置
-def get_scf_client():
-    secret_id = os.environ.get('SECRETID')
-    secret_key = os.environ.get('SECRETKEY')
-    region = os.environ.get('REGION')
-    
-    if not all([secret_id, secret_key, region]):
-        logger.error("缺少必要的腾讯云凭证或区域信息")
-        raise ValueError("缺少腾讯云凭证或区域信息")
-        
-    cred = credential.Credential(secret_id, secret_key)
-    httpProfile = HttpProfile()
-    httpProfile.endpoint = "scf.tencentcloudapi.com"
-
-    clientProfile = ClientProfile()
-    clientProfile.httpProfile = httpProfile
-    return scf_client.ScfClient(cred, region, clientProfile)
-
-app = Flask(__name__)
-CORS(app)  # 启用CORS，允许所有域名的请求
-
-# 初始化支付配置 - 现在PaymentConfig已经被定义，可以正常使用
-payment_config = PaymentConfig()
-try:
-    payment_config.load_from_env()
-    payment_service = PaymentService(payment_config)
-    logger.info("支付服务初始化成功")
-except Exception as e:
-    logger.error(f"支付服务初始化失败: {str(e)}")
-    # 创建一个空的服务实例避免未定义错误
-    payment_service = PaymentService(payment_config)
-
-def create_response(body, status_code=200, callback=None):
-    """创建标准响应格式，支持JSONP"""
-    # 将JSON响应转换为字符串
-    if not isinstance(body, str):
-        body_str = json.dumps(body, ensure_ascii=False)
-    else:
-        body_str = body
-    
-    # 处理JSONP回调
-    if callback:
-        body_str = callback + "(" + body_str + ")"
-        content_type = 'application/javascript'
-    else:
-        content_type = 'application/json'
-    
-    # 处理CORS头信息
-    headers = {
-        'Content-Type': content_type,
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-    }
-    
-    return {
-        'isBase64Encoded': False,
-        'statusCode': status_code,
-        'headers': headers,
-        'body': body_str
-    }
-
-def generate_success(data=None, message=None):
-    """生成成功响应"""
-    response = {'success': True}
-    if data is not None:
-        response['data'] = data
-    if message is not None:
-        response['message'] = message
-    return create_response(response)
-
-def generate_error(message, status_code=400):
-    """生成错误响应"""
-    return create_response({
-        'success': False,
-        'message': message
-    }, status_code)
-
-# 主页路由
-@app.route('/', methods=['GET'])
-def index():
-    """提供配置页面"""
-    logger.info("请求首页")
-    return send_from_directory('.', 'frontend.html')
-
-# 配置API
-@app.route('/api/config', methods=['POST', 'OPTIONS'])
-def save_config():
-    """保存用户配置到COS"""
-    logger.info(f"收到请求 - 方法: {request.method}, 路径: {request.path}")
-    
-    if request.method == 'OPTIONS':
-        # 处理CORS预检请求
-        return create_response('', 204)
-    
-    try:
-        # 获取请求数据
-        data = request.get_json()
-        if not data:
-            logger.error("无效的请求数据")
-            return create_response({
-                'success': False,
-                'message': '无效的请求数据'
-            }, 400)
-        
-        logger.info(f"收到配置数据: {json.dumps(data, ensure_ascii=False)}")
-        
-        # 验证必要参数
-        required_fields = ['user_id', 'app_id', 'app_secret', 'template_id', 'user_openid']
-        for field in required_fields:
-            if not data.get(field):
-                logger.error(f"缺少必要参数: {field}")
-                return create_response({
-                    'success': False,
-                    'message': f'缺少必要参数: {field}'
-                }, 400)
-        
-        # 设置默认值
-        data.setdefault('location_name', '朝阳区')
-        data.setdefault('adm_name', '北京市')
-        data.setdefault('meet_date', '2025-02-04')
-        data.setdefault('partner_birthday', '2000-02-22')
-        data.setdefault('xiazhou_birthday', '2003-11-13')
-        data.setdefault('indices_template_id', '')
-        
-        # 保存到COS
-        client = get_cos_client()
-        bucket = os.environ.get('COS_BUCKET')
-        if not bucket:
-            logger.error("环境变量COS_BUCKET未设置")
-            return create_response({
-                'success': False,
-                'message': '服务器配置错误：存储桶未指定'
-            }, 500)
-        
-        logger.info(f"使用存储桶: {bucket}")
-        user_id = data['user_id']
-        
-        # 尝试在上传前检查存储桶是否存在
-        try:
-            client.head_bucket(Bucket=bucket)
-            logger.info(f"存储桶 {bucket} 存在且可访问")
-        except Exception as e:
-            logger.error(f"存储桶 {bucket} 不存在或无法访问: {str(e)}")
-            return create_response({
-                'success': False,
-                'message': f'存储配置失败：无法访问存储桶'
-            }, 500)
-        
-        # 将配置转换为JSON格式
-        config_json = json.dumps(data, ensure_ascii=False)
-        
-        # 上传到COS
-        client.put_object(
-            Bucket=bucket,
-            Body=config_json.encode('utf-8'),
-            Key=f'user_configs/{user_id}.json'
-        )
-        
-        logger.info(f"成功上传配置到COS - User ID: {user_id}")
-        
-        return create_response({
-            'success': True,
-            'message': '配置保存成功'
-        })
-        
-    except Exception as e:
-        logger.error(f"处理API请求失败: {str(e)}", exc_info=True)
-        return create_response({
-            'success': False,
-            'message': f'服务器错误: {str(e)}'
-        }, 500)
-
-# 测试发送API - 确保这个路由被正确添加到app中
-@app.route('/api/test-send', methods=['POST', 'OPTIONS'])
-def test_send():
-    """测试发送微信消息"""
-    logger.info(f"收到测试发送请求 - 方法: {request.method}, 路径: {request.path}")
-    
-    if request.method == 'OPTIONS':
-        # 处理CORS预检请求
-        return create_response('', 204)
-    
-    try:
-        # 获取请求数据
-        data = request.get_json()
-        if not data:
-            logger.error("无效的请求数据")
-            return create_response({
-                'success': False,
-                'message': '无效的请求数据'
-            }, 400)
-            
-        logger.info(f"收到测试数据: {json.dumps(data, ensure_ascii=False)}")
-        
-        # 验证必要参数
-        required_fields = ['user_id', 'app_id', 'app_secret', 'template_id', 'user_openid']
-        for field in required_fields:
-            if not data.get(field):
-                logger.error(f"缺少必要参数: {field}")
-                return create_response({
-                    'success': False,
-                    'message': f'缺少必要参数: {field}'
-                }, 400)
-        
-        # 设置默认值
-        data.setdefault('location_name', '朝阳区')
-        data.setdefault('adm_name', '北京市')
-        data.setdefault('meet_date', '2025-02-04')
-        data.setdefault('partner_birthday', '2000-02-22')
-        data.setdefault('xiazhou_birthday', '2003-11-13')
-        data.setdefault('indices_template_id', '')
-        
-        try:
-            # 调用 morning_greeting 函数
-            client = get_scf_client()
-            function_name = os.environ.get('MORNING_GREETING_FUNCTION_NAME', 'morning-greeting')
-            
-            # 构造调用参数
-            payload = {
-                "source": "test-send",
-                "config": data
+            } catch (e) {
+                console.error('[ERROR] 页面初始化错误:', e);
             }
             
-            logger.info(f"准备调用函数: {function_name}，Payload: {json.dumps(payload, ensure_ascii=False)}")
-            
-            req = scf_models.InvokeRequest()
-            req.FunctionName = function_name
-            req.Namespace = os.environ.get('SCF_NAMESPACE', 'default')
-            req.InvocationType = "RequestResponse"  # 同步调用
-            req.ClientContext = ""
-            req.LogType = "Tail"
-            req.Payload = json.dumps(payload, ensure_ascii=False)
-            
-            logger.info("开始调用云函数")
-            resp = client.Invoke(req)
-            logger.info(f"云函数调用响应: {resp}")
-            
-            # 处理函数返回结果
-            result = resp.Result
-            if result.RetMsg:
-                try:
-                    result_data = json.loads(result.RetMsg)
-                    logger.info(f"函数返回结果: {result_data}")
-                    return create_response(result_data)
-                except json.JSONDecodeError:
-                    logger.error(f"解析函数返回结果失败: {result.RetMsg}")
-                    return create_response({
-                        'success': False,
-                        'message': '解析函数返回结果失败'
-                    }, 500)
-            else:
-                logger.error(f"函数调用失败，错误码: {result.ErrCode}, 函数错误码: {result.FunctionErrorCode}")
-                return create_response({
-                    'success': False,
-                    'message': f'函数调用失败，错误码: {result.ErrCode}, 函数错误码: {result.FunctionErrorCode}'
-                }, 500)
-                
-        except TencentCloudSDKException as e:
-            logger.error(f"调用云函数失败: {e}")
-            return create_response({
-                'success': False,
-                'message': f'调用云函数失败: {str(e)}'
-            }, 500)
-            
-    except Exception as e:
-        logger.error(f"处理测试请求失败: {str(e)}", exc_info=True)
-        return create_response({
-            'success': False,
-            'message': f'服务器错误: {str(e)}'
-        }, 500)
-
-# 添加新的API端点用于获取价格信息
-def get_plan_prices():
-    """获取当前的订阅计划价格，从环境变量读取"""
-    try:
-        prices = {
-            'monthly': float(os.environ.get('PRICE_MONTHLY', '24.9')),
-            'annual': float(os.environ.get('PRICE_ANNUAL', '29.9')),
-            'permanent': float(os.environ.get('PRICE_PERMANENT', '99.9')),  # 可选的永久计划
-            'update_time': datetime.now().strftime('%Y-%m-%d'),  # 价格更新时间
-            'discount': os.environ.get('PRICE_DISCOUNT', '限时优惠')  # 可选的促销信息
-        }
-        # 使用与其他API端点相同的响应格式
-        return create_response({
-            'success': True,
-            'data': prices
-        })
-    except Exception as e:
-        logger.error(f"获取价格信息时出错: {str(e)}")
-        return create_response({
-            'success': False,
-            'message': "获取价格信息失败"
-        }, 400)
-
-# 修改获取价格函数，从环境变量读取价格
-def get_plan_price(plan):
-    """从环境变量获取订阅计划的价格"""
-    try:
-        if plan == 'monthly':
-            return float(os.environ.get('PRICE_MONTHLY', '24.90'))
-        elif plan == 'annual':
-            return float(os.environ.get('PRICE_ANNUAL', '59.90'))
-        elif plan == 'permanent':
-            return float(os.environ.get('PRICE_PERMANENT', '99.90'))
-        else:
-            return float(os.environ.get('PRICE_MONTHLY', '24.90'))  # 默认月度价格
-    except (ValueError, TypeError):
-        # 转换失败时使用默认值
-        logger.warning(f"无法从环境变量读取{plan}价格，使用默认值")
-        if plan == 'monthly':
-            return 24.90
-        elif plan == 'annual':
-            return 59.90
-        elif plan == 'permanent':
-            return 99.90
-        else:
-            return 24.90
-
-def create_payment_info(order_id, amount, plan):
-    """创建支付信息，避免使用f-string包含反斜杠"""
-    try:
-        # 支付供应商API密钥
-        payment_key = os.environ.get('PAYMENT_KEY', '')
-        
-        # 商品名称和描述
-        product_name = "微信推送服务-" + plan
-        
-        # 定义基本参数（使用字典而不是f-string）
-        params = {
-            'pid': '2025032919123238',
-            'money': str(amount),
-            'name': product_name,
-            'out_trade_no': order_id,
-            'notify_url': os.environ.get('PAYMENT_NOTIFY_URL', ''),
-            'return_url': f"https://ai.kaxsx.top/?payment_success=true&order_id={order_id}",
-            'type': 'alipay',
-            'sitename': '微信推送服务'
-        }
-        
-        # 生成签名 - 使用join而不是f-string
-        sign_parts = []
-        for k in sorted(params.keys()):
-            sign_parts.append(k + "=" + params[k])
-        sign_str = "&".join(sign_parts) + payment_key
-        
-        sign = hashlib.md5(sign_str.encode()).hexdigest()
-        
-        # 添加签名到参数
-        params['sign'] = sign
-        params['sign_type'] = 'MD5'
-        
-        # 构建支付URL - 使用join而不是f-string
-        base_url = "https://z-pay.cn/submit.php"
-        url_parts = []
-        for k, v in params.items():
-            url_parts.append(k + "=" + v)
-        pay_url = base_url + "?" + "&".join(url_parts)
-        
-        # 生成表单HTML - 使用列表拼接而不是f-string
-        html_parts = [
-            "<html>",
-            "<head><title>正在跳转到支付页面...</title></head>",
-            "<body onload=\"document.getElementById('payform').submit();\">",
-            "<form id=\"payform\" action=\"" + base_url + "\" method=\"post\">"
-        ]
-        
-        for k, v in params.items():
-            html_parts.append("<input type=\"hidden\" name=\"" + k + "\" value=\"" + v + "\" />")
-        
-        html_parts.append("</form>")
-        html_parts.append("<p>正在跳转到支付页面，请稍候...</p>")
-        html_parts.append("</body>")
-        html_parts.append("</html>")
-        
-        form_html = "\n".join(html_parts)
-        
-        # 返回所有支付相关信息
-        return {
-            'payment_url': pay_url,
-            'form_html': form_html,
-            'qrcode_url': "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" + pay_url
-        }
-    except Exception as e:
-        logger.error("创建支付信息失败: " + str(e), exc_info=True)
-        raise
-
-# 添加新的环境变量获取
-PRICE_DUAL = float(os.environ.get('PRICE_DUAL', '52'))
-
-# 修改价格信息API，增加双人套餐价格
-@app.route('/api/price', methods=['GET'])
-def get_price():
-    price_info = {
-        'monthly': float(os.environ.get('PRICE_MONTHLY', '1')),
-        'annual': float(os.environ.get('PRICE_ANNUAL', '2')),
-        'dual': float(os.environ.get('PRICE_DUAL', '52'))
-    }
-    return create_response(price_info)
-
-# 修改配置更新API，不再检查用户登录状态
-@app.route('/api/config/update', methods=['POST'])
-def update_config():
-    try:
-        body = request.get_json()
-        
-        # 获取配置信息
-        phone = body.get('phone', '')  # 作为 user_id 使用
-        config = body.get('config', {})
-        
-        if not phone:
-            return create_response({
-                'success': False,
-                'message': '缺少必要信息'
-            }, 400)
-            
-        # 不再验证用户身份，直接保存配置
-        client = get_cos_client()
-        config_file_key = f"user_configs/{phone}.json"
-        
-        client.put_object(
-            Bucket=os.environ.get('COS_BUCKET'),
-            Key=config_file_key,
-            Body=json.dumps(config, ensure_ascii=False)
-        )
-        
-        return create_response({
-            'success': True,
-            'message': '配置保存成功'
-        })
-    except Exception as e:
-        logger.error(f"更新配置失败: {str(e)}", exc_info=True)
-        return create_response({
-            'success': False,
-            'message': f'更新配置失败: {str(e)}'
-        }, 500)
-
-# 处理SCF请求的入口函数
-def main_handler(event, context):
-    """
-    主处理函数，处理所有API请求
-    """
-    # 记录收到的事件和环境变量
-    logger.info(f"收到事件: {json.dumps(event, ensure_ascii=False)}")
-    
-    # 提取路径和HTTP方法
-    path = event.get('path', '')
-    http_method = event.get('httpMethod', '')
-    
-    logger.info(f"收到请求: 路径={path}, 方法={http_method}")
-    
-    # 处理OPTIONS预检请求
-    if http_method == 'OPTIONS':
-        return {
-            'isBase64Encoded': False,
-            'statusCode': 204,
-            'headers': {
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-                'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-                'Access-Control-Max-Age': '86400'
-            },
-            'body': ''
-        }
-    
-    # 处理价格API请求 - 单独实现，添加JSONP支持
-    elif path == '/api/price' and http_method == 'GET':
-        try:
-            # 获取查询参数
-            query_params = event.get('queryString', {})
-            callback = query_params.get('callback', None)
-            
-            # 从环境变量获取价格
-            price_info = {
-                'monthly': float(os.environ.get('PRICE_MONTHLY', '24.9')),
-                'annual': float(os.environ.get('PRICE_ANNUAL', '29.9')),
-                'dual': float(os.environ.get('PRICE_DUAL', '1'))
+            // 如果API_BASE_URL未定义或为空，使用默认值
+            if (!window.API_BASE_URL) {
+                window.API_BASE_URL = 'https://1387331310-2gg2yrldkk.ap-beijing.tencentscf.com';
+                console.log('API_BASE_URL未定义，使用默认值:', API_BASE_URL);
             }
             
-            # 如果有callback参数，返回JSONP格式
-            if callback:
-                response_body = f"{callback}({json.dumps(price_info)})"
-                return {
-                    'isBase64Encoded': False,
-                    'statusCode': 200,
-                    'headers': {
-                        'Content-Type': 'application/javascript',
-                        'Access-Control-Allow-Origin': '*'
-                    },
-                    'body': response_body
+            // 测试API连接
+            fetch(`${API_BASE_URL}/api/price`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
                 }
-            else:
-                # 否则返回普通JSON
-                return create_response(price_info)
-                
-        except Exception as e:
-            logger.error(f"获取价格信息失败: {str(e)}", exc_info=True)
-            return create_response({
-                'success': False,
-                'message': f'获取价格信息失败: {str(e)}'
-            }, 500)
-    
-    # 处理支付创建请求
-    elif path == '/api/payment/create' and http_method == 'POST':
-        try:
-            req_data = request.get_json()
-            phone = req_data.get('phone')
-            plan = req_data.get('plan', 'monthly')
-            
-            # 价格查询
-            prices = {
-                'monthly': 24.9,
-                'annual': 29.9,
-                'dual': 1
-            }
-            
-            price = prices.get(plan, 24.9)
-            
-            # 创建订单号
-            order_id = f"WX{int(time.time())}"
-            
-            # 固定参数
-            pid = os.environ.get('ZPAY_PID', '2025032919123238')
-            key = os.environ.get('ZPAY_KEY', '')  # 从环境变量获取密钥
-            
-            # 支付信息
-            payment_params = {
-                'pid': pid,
-                'money': str(price),  # 确保金额是字符串
-                'name': f'微信推送服务-{plan}',
-                'out_trade_no': order_id,
-                'notify_url': f"{API_BASE_URL}/api/payment/webhook",
-                'return_url': f"https://ai.kaxsx.top/?payment_success=true&order_id={order_id}",
-                'type': 'alipay',  # 确保这里设置了支付类型
-                'sitename': '微信推送服务'
-            }
-            
-            # 按照字母顺序排序参数
-            param_keys = sorted(payment_params.keys())
-            
-            # 构建签名字符串
-            sign_str = '&'.join([f"{k}={payment_params[k]}" for k in param_keys])
-            # 正确拼接商户密钥
-            sign_str = sign_str + key
-            
-            # 生成MD5签名
-            sign = hashlib.md5(sign_str.encode('utf-8')).hexdigest()
-            
-            # 添加签名到参数中
-            payment_params['sign'] = sign
-            payment_params['sign_type'] = 'MD5'
-            
-            # 构建支付URL和二维码URL (使用urllib.parse进行正确编码)
-            from urllib.parse import urlencode, quote
-            
-            # 使用urlencode正确编码所有参数
-            param_str = urlencode(payment_params)
-            payment_url = f"https://z-pay.cn/submit.php?{param_str}"
-            qrcode_url = f"https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={quote(payment_url)}"
-            
-            logger.info(f"订单已创建: {order_id}, 金额: {price}, 类型: {plan}")
-            logger.info(f"支付URL: {payment_url}")
-            
-            return jsonify({
-                'success': True,
-                'order_id': order_id,
-                'payment_url': payment_url,
-                'qrcode_url': qrcode_url
             })
-        except Exception as e:
-            logger.error(f"创建支付订单失败: {str(e)}")
-            return jsonify({
-                'success': False,
-                'message': f"创建支付订单失败: {str(e)}"
-            }), 500
-    
-    # 处理其他API请求...
-    # 此处省略其他路由处理...
-    
-    else:
-        return create_response({
-            'success': False,
-            'message': '请求的资源不存在'
-        }, 404)
-
-def handle_get_payment_status(event):
-    """处理查询支付状态请求"""
-    try:
-        order_id = event.get('pathParameters', {}).get('order_id')
-        if not order_id:
-            return create_response({
-                'success': False,
-                'message': '缺少订单号'
-            }, 400)
+            .then(response => {
+                console.log('测试API连接状态:', response.status);
+                if (response.ok) {
+                    console.log('API连接正常');
+                } else {
+                    console.warn('API连接异常，状态码:', response.status);
+                }
+            })
+            .catch(error => {
+                console.error('API连接测试失败:', error);
+            });
             
-        result = payment_service.query_order(order_id)
-        return create_response(result)
-        
-    except Exception as e:
-        logger.error(f"查询支付状态失败: {str(e)}", exc_info=True)
-        return create_response({
-            'success': False,
-            'message': f'查询支付状态失败: {str(e)}'
-        }, 500)
+            // 从API获取价格信息
+            fetchPriceInfo();
+            
+            // 显示配置部分
+            configSection.style.display = 'block';
+            
+            // 测试发送给伴侣按钮点击事件
+            testButton.addEventListener('click', function() {
+                const config = collectConfigData();
+                if (validateConfig(config)) {
+                    sendTestMessage(config, false);
+                }
+            });
+            
+            // 测试发送给自己按钮点击事件
+            document.getElementById('testSelfButton').addEventListener('click', function() {
+                const partnerConfig = collectConfigData();
+                const userConfig = collectUserConfigData(partnerConfig);
+                
+                if (validateUserConfig(userConfig)) {
+                    sendTestMessage(userConfig, true);
+                }
+            });
+            
+            // 保存配置按钮点击事件
+            saveButton.addEventListener('click', function() {
+                // 获取用户信息和配置
+                const phone = document.getElementById('phone').value;
+                const password = document.getElementById('password').value;
+                const config = collectConfigData();
+                
+                if (!phone || !password) {
+                    alert('请填写手机号和密码');
+                    return;
+                }
+                
+                if (!validateConfig(config)) {
+                    return;
+                }
+                
+                // 保存用户本人配置以备后用
+                const userConfig = collectUserConfigData(config);
+                
+                // 保存临时信息
+                sessionStorage.setItem('pendingPhone', phone);
+                sessionStorage.setItem('pendingPassword', password);
+                sessionStorage.setItem('pendingConfig', JSON.stringify(config));
+                sessionStorage.setItem('pendingUserConfig', JSON.stringify(userConfig));
+                
+                // 显示套餐选择模态框
+                showPaymentModal();
+            });
+            
+            // 确认订阅按钮点击事件
+            document.getElementById('confirmPaymentButton').addEventListener('click', function() {
+                try {
+                    console.log('[INFO] 确认订阅按钮被点击');
+                    
+                    // 获取选中的套餐
+                    const selectedPlanElement = document.querySelector('input[name="modal-plan"]:checked');
+                    if (!selectedPlanElement) {
+                        alert('请选择一个套餐');
+                        return;
+                    }
+                    
+                    const selectedPlan = selectedPlanElement.value;
+                    console.log('[INFO] 选择的套餐:', selectedPlan);
+                    
+                    // 从页面中获取信息
+                    const phone = document.getElementById('phone') ? document.getElementById('phone').value : '';
+                    console.log('[INFO] 电话号码:', phone);
+                    
+                    if (!phone) {
+                        alert('请填写手机号');
+                        return;
+                    }
+                    
+                    // 收集配置信息
+                    const config = collectConfigData();
+                    if (!config) {
+                        alert('配置信息收集失败');
+                        return;
+                    }
+                    
+                    // 如果是双人套餐，检查用户本人配置
+                    if (selectedPlan === 'dual') {
+                        const userConfig = collectUserConfigData();
+                        if (!validateUserConfig(userConfig)) {
+                            return;
+                        }
+                        
+                        // 保存个人配置到sessionStorage
+                        sessionStorage.setItem('pendingUserConfig', JSON.stringify(userConfig));
+                    }
+                    
+                    // 保存基本信息到sessionStorage
+                    sessionStorage.setItem('pendingPhone', phone);
+                    sessionStorage.setItem('pendingConfig', JSON.stringify(config));
+                    sessionStorage.setItem('pendingPlan', selectedPlan);
+                    
+                    // 显示加载中状态
+                    const loadingSpinner = document.getElementById('loadingSpinner');
+                    if (loadingSpinner) {
+                        loadingSpinner.style.display = 'block';
+                    }
+                    
+                    // 隐藏套餐选择，显示加载
+                    const planSelection = document.getElementById('planSelection');
+                    if (planSelection) {
+                        planSelection.style.display = 'none';
+                    }
+                    
+                    // 隐藏确认按钮
+                    this.style.display = 'none';
+                    
+                    console.log('[INFO] 创建订单: 套餐=' + selectedPlan + ', 手机=' + phone);
+                    
+                    // 调用创建订单API
+                    fetch(`${API_BASE_URL}/api/payment/create`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            phone: phone,
+                            plan: selectedPlan
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log('[INFO] 创建订单响应:', data);
+                        
+                        // 隐藏加载状态
+                        if (loadingSpinner) {
+                            loadingSpinner.style.display = 'none';
+                        }
+                        
+                        if (data.success) {
+                            console.log('[INFO] 订单创建成功:', data.order_id);
+                            
+                            // 保存订单信息
+                            sessionStorage.setItem('currentOrderId', data.order_id);
+                            
+                            // 不显示二维码，直接跳转到支付页面
+                            window.location.href = data.payment_url;
+                        } else {
+                            alert('创建订单失败: ' + (data.message || '未知错误'));
+                            
+                            // 恢复UI状态
+                            if (planSelection) {
+                                planSelection.style.display = 'block';
+                            }
+                            this.style.display = 'inline-block';
+                        }
+                    })
+                    .catch(error => {
+                        if (loadingSpinner) {
+                            loadingSpinner.style.display = 'none';
+                        }
+                        console.error('[ERROR] 创建订单请求失败:', error);
+                        alert('创建订单发生错误: ' + error.message);
+                        
+                        // 恢复UI状态
+                        if (planSelection) {
+                            planSelection.style.display = 'block';
+                        }
+                        this.style.display = 'inline-block';
+                    });
+                } catch (error) {
+                    console.error('[ERROR] 确认订阅处理发生错误:', error);
+                    alert('处理订阅请求出错: ' + error.message);
+                    
+                    // 恢复UI状态
+                    const loadingSpinner = document.getElementById('loadingSpinner');
+                    if (loadingSpinner) {
+                        loadingSpinner.style.display = 'none';
+                    }
+                    
+                    const planSelection = document.getElementById('planSelection');
+                    if (planSelection) {
+                        planSelection.style.display = 'block';
+                    }
+                    
+                    this.style.display = 'inline-block';
+                }
+            });
+            
+            // "我已完成支付"按钮点击事件
+            paymentCompleteButton.addEventListener('click', function() {
+                // 检查订单状态
+                const orderId = sessionStorage.getItem('currentOrderId');
+                if (orderId) {
+                    checkOrderStatus(orderId);
+                }
+            });
+            
+            // 双人套餐选择事件
+            document.querySelectorAll('input[name="modal-plan"]').forEach(radio => {
+                radio.addEventListener('change', function() {
+                    const dualConfigSection = document.getElementById('modalUserConfigSection');
+                    if (this.value === 'dual') {
+                        dualConfigSection.style.display = 'block';
+                    } else {
+                        dualConfigSection.style.display = 'none';
+                    }
+                });
+            });
+            
+            // 页面加载时设置双人套餐价格为52
+            const dualPriceElement = document.getElementById('modalPriceDual');
+            if (dualPriceElement) {
+                dualPriceElement.textContent = '52';
+            }
 
-# 本地测试使用
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=9000) 
+            // 页面加载时直接设置价格
+            document.getElementById('modalPriceMonthly').textContent = '24.9';
+            document.getElementById('modalPriceAnnual').textContent = '29.9';
+            document.getElementById('modalPriceDual').textContent = '1';
+        });
+        
+        // 获取价格数据函数
+        function fetchPrices() {
+            console.log('[INFO] 开始获取价格信息');
+            const priceUrl = `${API_BASE_URL}/api/price`;
+            console.log('[INFO] 正在获取价格信息，API地址:', priceUrl);
+            
+            // 使用JSONP方式获取价格数据
+            const script = document.createElement('script');
+            script.src = `${priceUrl}?callback=handlePriceData&t=${new Date().getTime()}`;
+            document.body.appendChild(script);
+            
+            // 设置超时处理
+            setTimeout(function() {
+                if (!window.pricesLoaded) {
+                    console.error('[ERROR] 获取价格信息超时');
+                    // 使用默认价格
+                    updatePricesUI({
+                        monthly: 24.9,
+                        annual: 29.9,
+                        dual: 1
+                    });
+                }
+            }, 5000);
+        }
+
+        // 处理价格数据的回调函数
+        function handlePriceData(data) {
+            console.log('[INFO] 获取到的价格数据:', data);
+            window.pricesLoaded = true;
+            
+            // 更新UI上的价格
+            updatePricesUI(data);
+        }
+
+        // 更新UI上的价格
+        function updatePricesUI(prices) {
+            try {
+                // 更新主页面价格（如果有这些元素）
+                const monthlyPriceElement = document.getElementById('monthlyPrice');
+                const annualPriceElement = document.getElementById('annualPrice');
+                const dualPriceElement = document.getElementById('dualPrice');
+                
+                if (monthlyPriceElement) monthlyPriceElement.textContent = prices.monthly;
+                if (annualPriceElement) annualPriceElement.textContent = prices.annual;
+                if (dualPriceElement) dualPriceElement.textContent = prices.dual;
+                
+                // 更新模态框中的价格
+                document.getElementById('modalPriceMonthly').textContent = prices.monthly;
+                document.getElementById('modalPriceAnnual').textContent = prices.annual;
+                document.getElementById('modalPriceDual').textContent = prices.dual;
+            } catch (error) {
+                console.error('[ERROR] 更新价格UI时出错:', error);
+            }
+        }
+
+        // 改进检查支付返回状态的函数
+        function checkPaymentReturnStatus() {
+            console.log('[INFO] 检查支付返回状态');
+            
+            // 使用不同的变量名
+            const paymentParams = new URLSearchParams(window.location.search);
+            
+            // 检查多种可能的支付成功参数
+            const paymentSuccess = paymentParams.get('payment_success') === 'true';
+            const tradeStatus = paymentParams.get('trade_status') === 'TRADE_SUCCESS';
+            const resultSuccess = paymentParams.get('result') === 'success';
+            
+            // 尝试从不同参数获取订单号
+            const orderId = paymentParams.get('order_id') || paymentParams.get('out_trade_no');
+            
+            console.log('[INFO] 支付参数检查:', { 
+                paymentSuccess, 
+                tradeStatus, 
+                resultSuccess,
+                orderId,
+                hasParams: paymentParams.toString()
+            });
+            
+            // 如果有任何支付成功的标记且有订单号
+            if ((paymentSuccess || tradeStatus || resultSuccess) && orderId) {
+                console.log('[INFO] 检测到支付成功，处理订单:', orderId);
+                
+                // 从会话存储中获取之前保存的订单号
+                const storedOrderId = sessionStorage.getItem('currentOrderId');
+                
+                if (storedOrderId && storedOrderId === orderId) {
+                    console.log('[INFO] 订单号匹配，处理支付成功');
+                    handlePaymentSuccessAfterReturn(orderId);
+                } else {
+                    // 即使不匹配，也尝试使用返回的订单号
+                    console.log('[WARN] 订单号不匹配，使用返回的订单号:',
+                        {stored: storedOrderId, returned: orderId});
+                    handlePaymentSuccessAfterReturn(orderId);
+                }
+            }
+        }
+        
+        // 改进价格获取函数，增加错误处理和重试逻辑
+        function fetchPriceInfo() {
+            console.log('正在获取价格信息，API地址:', `${API_BASE_URL}/api/price`);
+            
+            // 添加时间戳避免缓存问题
+            const url = `${API_BASE_URL}/api/price?t=${Date.now()}`;
+            
+            fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                mode: 'cors'  // 明确指定CORS模式
+            })
+            .then(response => {
+                console.log('价格API响应状态:', response.status);
+                if (!response.ok) {
+                    throw new Error(`HTTP错误! 状态: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('获取到的价格数据:', data);
+                // 更新模态框中的价格显示
+                document.getElementById('modalPriceMonthly').textContent = data.monthly || '24.9';
+                document.getElementById('modalPriceAnnual').textContent = data.annual || '29.9';
+                document.getElementById('modalPriceDual').textContent = data.dual || '1';
+            })
+            .catch(error => {
+                console.error('获取价格信息失败，使用默认价格:', error);
+                // 使用默认价格
+                document.getElementById('modalPriceMonthly').textContent = '24.9';
+                document.getElementById('modalPriceAnnual').textContent = '29.9';
+                document.getElementById('modalPriceDual').textContent = '1';
+            });
+        }
+        
+        // 完全重写显示支付模态框函数，添加详细日志
+        function showPaymentModal() {
+            try {
+                console.log('[DEBUG] 开始打开支付模态框');
+                
+                // 首先查找模态框元素
+                const modalElement = document.getElementById('paymentModal');
+                if (!modalElement) {
+                    console.error('[ERROR] 找不到支付模态框元素 #paymentModal');
+                    alert('找不到支付模态框，请刷新页面后重试');
+                    return;
+                }
+                console.log('[DEBUG] 找到模态框元素:', modalElement);
+                
+                // 检查并记录所有相关元素是否存在
+                const elements = {
+                    planSelection: document.getElementById('planSelection'),
+                    qrcodeSection: document.getElementById('qrcodeSection'),
+                    confirmPaymentButton: document.getElementById('confirmPaymentButton'),
+                    paymentCompleteButton: document.getElementById('paymentCompleteButton'),
+                    monthlyPlan: document.getElementById('monthlyPlan'),
+                    annualPlan: document.getElementById('annualPlan'),
+                    dualPlan: document.getElementById('dualPlan'),
+                    modalPriceMonthly: document.getElementById('modalPriceMonthly'),
+                    modalPriceAnnual: document.getElementById('modalPriceAnnual'),
+                    modalPriceDual: document.getElementById('modalPriceDual'),
+                    paymentQrcode: document.getElementById('paymentQrcode'),
+                    paymentLink: document.getElementById('paymentLink')
+                };
+                
+                // 记录所有元素状态
+                console.log('[DEBUG] 支付相关元素状态:', 
+                    Object.entries(elements).reduce((acc, [key, value]) => {
+                        acc[key] = !!value;
+                        return acc;
+                    }, {})
+                );
+                
+                // 检查必要元素
+                const missingElements = Object.entries(elements)
+                    .filter(([_, value]) => !value)
+                    .map(([key, _]) => key);
+                    
+                if (missingElements.length > 0) {
+                    console.error('[ERROR] 缺少必要的支付元素:', missingElements);
+                    alert(`初始化支付界面失败，缺少必要元素: ${missingElements.join(', ')}`);
+                    return;
+                }
+                
+                // 重置模态框状态
+                console.log('[DEBUG] 重置模态框状态');
+                elements.planSelection.style.display = 'block';
+                elements.qrcodeSection.style.display = 'none';
+                elements.confirmPaymentButton.style.display = 'inline-block';
+                elements.paymentCompleteButton.style.display = 'none';
+                
+                // 显示模态框
+                console.log('[DEBUG] 尝试显示模态框');
+                try {
+                    const modal = new bootstrap.Modal(modalElement);
+                    modal.show();
+                    console.log('[DEBUG] 模态框已成功显示');
+                } catch (modalError) {
+                    console.error('[ERROR] 显示模态框失败:', modalError);
+                    alert('无法显示支付界面: ' + modalError.message);
+                    
+                    // 尝试替代方法显示模态框
+                    try {
+                        console.log('[DEBUG] 尝试使用jQuery显示模态框');
+                        $(modalElement).modal('show');
+                        console.log('[DEBUG] 使用jQuery显示模态框成功');
+                    } catch (jqueryError) {
+                        console.error('[ERROR] jQuery显示模态框也失败:', jqueryError);
+                        // 最后尝试直接设置样式
+                        modalElement.style.display = 'block';
+                        modalElement.classList.add('show');
+                        document.body.classList.add('modal-open');
+                        
+                        // 创建模态框背景
+                        const backdrop = document.createElement('div');
+                        backdrop.classList.add('modal-backdrop', 'fade', 'show');
+                        document.body.appendChild(backdrop);
+                        
+                        console.log('[DEBUG] 使用直接样式设置显示模态框');
+                    }
+                }
+            } catch (error) {
+                console.error('[ERROR] 显示支付模态框整体失败:', error);
+                console.error('[ERROR] 错误堆栈:', error.stack);
+                alert('打开支付界面失败，请刷新页面后重试: ' + error.message);
+            }
+        }
+        
+        // 检查订单状态
+        function checkOrderStatus(orderId) {
+            fetch(`${API_BASE_URL}/api/payment/check-status?order_id=${orderId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.paid) {
+                        // 订单已支付
+                        paymentSuccess();
+                        paymentModal.hide();
+                    } else {
+                        alert('订单尚未支付完成，请完成支付后再试');
+                    }
+                })
+                .catch(error => {
+                    console.error('检查订单状态失败:', error);
+                    alert('检查订单状态失败，请稍后再试');
+                });
+        }
+        
+        // 修改支付成功处理函数
+        function paymentSuccess() {
+            // 隐藏支付相关界面
+            document.getElementById('paymentModal').style.display = 'none';
+            
+            // 获取保存的配置信息
+            const phone = sessionStorage.getItem('pendingPhone');
+            const plan = sessionStorage.getItem('pendingPlan');
+            const orderId = sessionStorage.getItem('currentOrderId');
+            
+            // 如果是双人套餐，先保存伴侣的配置
+            if (plan === 'dual') {
+                const partnerConfig = JSON.parse(sessionStorage.getItem('pendingConfig') || '{}');
+                
+                // 保存伴侣配置
+                fetch(`${API_BASE_URL}/api/save-config`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        phone: phone,
+                        config: partnerConfig,
+                        order_id: orderId
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        console.log('伴侣配置保存成功');
+                        
+                        // 获取并保存用户自己的配置
+                        const userConfig = getUserConfig();
+                        
+                        // 保存用户自己的配置
+                        return fetch(`${API_BASE_URL}/api/save-config`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                phone: phone,
+                                config: userConfig,
+                                order_id: orderId,
+                                is_user: true  // 标记这是用户自己的配置
+                            })
+                        });
+                    } else {
+                        throw new Error('保存伴侣配置失败: ' + data.message);
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        console.log('用户配置保存成功');
+                        showSuccessMessage('配置保存成功，您可以开始使用早安推送服务了！');
+                    } else {
+                        throw new Error('保存用户配置失败: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('保存配置失败:', error);
+                    showErrorMessage('保存配置失败: ' + error.message);
+                });
+            } else {
+                // 单人套餐，只保存伴侣配置
+                const config = JSON.parse(sessionStorage.getItem('pendingConfig') || '{}');
+                
+                fetch(`${API_BASE_URL}/api/save-config`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        phone: phone,
+                        config: config,
+                        order_id: orderId
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showSuccessMessage('配置保存成功，您可以开始使用早安推送服务了！');
+                    } else {
+                        showErrorMessage('保存配置失败: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('保存配置失败:', error);
+                    showErrorMessage('保存配置失败: ' + error.message);
+                });
+            }
+        }
+        
+        // 清除会话存储
+        function clearSessionStorage() {
+            sessionStorage.removeItem('pendingConfig');
+            sessionStorage.removeItem('pendingUserConfig');
+            sessionStorage.removeItem('pendingPhone');
+            sessionStorage.removeItem('pendingPassword');
+            sessionStorage.removeItem('pendingPlan');
+            sessionStorage.removeItem('currentOrderId');
+        }
+        
+        // 收集配置信息
+        function collectConfigData() {
+            return {
+                app_id: document.getElementById('app_id').value,
+                app_secret: document.getElementById('app_secret').value,
+                user_openid: document.getElementById('partner_openid').value,
+                template_id: document.getElementById('template_id').value,
+                indices_template_id: document.getElementById('indices_template_id').value,
+                location_name: document.getElementById('location_name').value,
+                adm_name: document.getElementById('adm_name').value,
+                meet_date: document.getElementById('meet_date').value,
+                partner_birthday: document.getElementById('partner_birthday').value,
+                xiazhou_birthday: document.getElementById('xiazhou_birthday').value
+            };
+        }
+        
+        // 验证配置信息
+        function validateConfig(config) {
+            const requiredFields = ['app_id', 'app_secret', 'user_openid', 'template_id', 'location_name', 'adm_name'];
+            const missingFields = requiredFields.filter(field => !config[field]);
+            
+            if (missingFields.length > 0) {
+                alert(`请填写必要的配置信息: ${missingFields.join(', ')}`);
+                return false;
+            }
+            
+            return true;
+        }
+        
+        // 发送测试消息
+        function sendTestMessage(config, isUser) {
+            loadingSpinner.style.display = 'block';
+            
+            console.log(`准备发送测试消息给${isUser ? '您自己' : '伴侣'}:`, config);
+            
+            // 调用morning_greeting云函数发送测试消息
+            fetch(`${MORNING_GREETING_URL}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(config)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const recipient = isUser ? '您' : '伴侣';
+                    alert(`发送给${recipient}的测试消息成功！`);
+                } else {
+                    const recipient = isUser ? '您' : '伴侣';
+                    alert(`发送给${recipient}的测试消息失败: ${data.message}`);
+                }
+                loadingSpinner.style.display = 'none';
+            })
+            .catch(error => {
+                console.error('发送测试消息失败:', error);
+                const recipient = isUser ? '您' : '伴侣';
+                alert(`发送给${recipient}的测试消息失败，请检查配置信息`);
+                loadingSpinner.style.display = 'none';
+            });
+        }
+        
+        // 保存用户配置
+        function saveUserConfig(phone, password, config, plan, isUserConfig) {
+            console.log(`保存${isUserConfig ? '用户本人' : '伴侣'}配置到后端:`, {
+                phone,
+                plan,
+                is_user_config: isUserConfig
+            });
+            
+            fetch(`${API_BASE_URL}/api/payment/complete-setup`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    phone: phone,
+                    password: password,
+                    config: config,
+                    plan: plan,
+                    order_id: sessionStorage.getItem('currentOrderId'),
+                    is_user_config: isUserConfig
+                })
+            })
+            .then(response => response.json())
+            .then(result => {
+                console.log(`${isUserConfig ? '用户本人' : '伴侣'}配置保存结果:`, result);
+            })
+            .catch(error => {
+                console.error(`保存${isUserConfig ? '用户本人' : '伴侣'}配置失败:`, error);
+            });
+        }
+        
+        // 修复收集用户本人的配置信息函数
+        function collectUserConfigData(partnerConfig) {
+            try {
+                // 克隆伴侣配置作为基础
+                const userConfig = {...partnerConfig};
+                
+                // 检查必要的DOM元素是否存在
+                const userOpenid = document.getElementById('userOpenid');
+                const userTemplateId = document.getElementById('userTemplateId');
+                const locationName = document.getElementById('locationName');
+                const admName = document.getElementById('admName');
+                
+                if (!userOpenid || !locationName || !admName) {
+                    console.error('找不到必要的用户配置DOM元素');
+                    return null;
+                }
+                
+                // 更新用户特定的配置
+                userConfig.user_openid = userOpenid.value.trim();
+                userConfig.template_id = userTemplateId ? userTemplateId.value.trim() : userConfig.template_id;
+                userConfig.location_name = locationName.value.trim();
+                userConfig.adm_name = admName.value.trim();
+                
+                // 交换生日信息
+                if (userConfig.xiazhou_birthday && userConfig.partner_birthday) {
+                    [userConfig.partner_birthday, userConfig.xiazhou_birthday] = 
+                        [userConfig.xiazhou_birthday, userConfig.partner_birthday];
+                }
+                
+                console.log('收集到的用户配置:', userConfig);
+                return userConfig;
+            } catch (error) {
+                console.error('收集用户配置数据时出错:', error);
+                alert('收集用户配置失败：' + error.message);
+                return null;
+            }
+        }
+        
+        // 验证用户配置的函数
+        function validateUserConfig(config) {
+            if (!config) {
+                alert('配置无效，请检查您的输入');
+                return false;
+            }
+            
+            if (!config.user_openid) {
+                alert('请填写您的微信OpenID');
+                return false;
+            }
+            
+            if (!config.location_name) {
+                alert('请填写您所在的区/县');
+                return false;
+            }
+            
+            if (!config.adm_name) {
+                alert('请填写您所在的城市');
+                return false;
+            }
+            
+            return true;
+        }
+
+        // 替代检查支付状态的函数（不依赖后端API）
+        function trackPaymentStatus(orderId) {
+            if (!orderId) {
+                console.error('[ERROR] 跟踪支付状态时没有订单ID');
+                return;
+            }
+            
+            console.log('[INFO] 开始跟踪支付状态:', orderId);
+            
+            // 显示加载状态
+            const paymentCompleteButton = document.getElementById('paymentCompleteButton');
+            if (paymentCompleteButton) {
+                paymentCompleteButton.innerHTML = '<i class="bi bi-check-circle"></i> 我已完成支付';
+                paymentCompleteButton.disabled = false;
+                
+                // 为"我已完成支付"按钮添加事件
+                paymentCompleteButton.onclick = function() {
+                    console.log('[INFO] 用户点击已完成支付按钮');
+                    
+                    // 显示加载状态
+                    paymentCompleteButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 正在验证支付...';
+                    paymentCompleteButton.disabled = true;
+                    
+                    // 模拟验证支付状态
+                    setTimeout(function() {
+                        console.log('[INFO] 模拟支付验证成功');
+                        handlePaymentSuccess(orderId);
+                    }, 2000);
+                };
+            }
+            
+            // 保存订单ID到会话存储
+            sessionStorage.setItem('currentOrderId', orderId);
+        }
+
+        // 修改处理支付成功函数
+        function handlePaymentSuccess(orderId) {
+            console.log('[INFO] 订单支付成功:', orderId);
+            
+            // 更新UI
+            const qrcodeSection = document.getElementById('qrcodeSection');
+            if (qrcodeSection) {
+                qrcodeSection.innerHTML = `
+                    <div class="text-center py-4">
+                        <i class="bi bi-check-circle-fill text-success" style="font-size: 4rem;"></i>
+                        <h4 class="mt-3 mb-4">支付成功！</h4>
+                        <p class="mb-1">您的订阅已经生效</p>
+                        <p class="mb-4 text-muted">订单号: ${orderId}</p>
+                        <div class="alert alert-success">
+                            <i class="bi bi-info-circle"></i> 系统将自动为您保存配置并启用服务
+                        </div>
+                        <button type="button" class="btn btn-primary" onclick="window.location.reload()">
+                            <i class="bi bi-arrow-repeat"></i> 刷新页面
+                        </button>
+                    </div>
+                `;
+            }
+            
+            // 保存配置到服务器
+            saveConfigToServer();
+        }
+
+        // 支付成功后返回处理函数
+        function handlePaymentSuccessAfterReturn(orderId) {
+            console.log('[INFO] 处理支付成功后的返回:', orderId);
+            
+            // 显示支付成功消息
+            alert('支付成功！订单号: ' + orderId);
+            
+            // 保存配置到服务器
+            saveConfigToServer();
+            
+            // 清除URL参数，避免刷新页面重复处理
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+
+        // 修改保存配置到服务器函数，添加更多日志
+        function saveConfigToServer() {
+            try {
+                console.log('[INFO] 开始保存配置到服务器');
+                const config = JSON.parse(sessionStorage.getItem('pendingConfig') || '{}');
+                const phone = sessionStorage.getItem('pendingPhone');
+                const plan = sessionStorage.getItem('pendingPlan');
+                const orderId = sessionStorage.getItem('currentOrderId');
+                
+                console.log('[INFO] 恢复的配置信息:', {
+                    hasConfig: Object.keys(config).length > 0,
+                    phone,
+                    plan,
+                    orderId
+                });
+                
+                if (!config || !phone || !plan || !orderId) {
+                    console.error('[ERROR] 保存配置缺少必要信息');
+                    alert('配置信息不完整，请重新填写配置并支付');
+                    return;
+                }
+                
+                // 如果是双人套餐，添加用户配置
+                if (plan === 'dual') {
+                    const userConfig = JSON.parse(sessionStorage.getItem('pendingUserConfig') || '{}');
+                    if (userConfig && userConfig.user_openid) {
+                        config.user_config = userConfig;
+                        console.log('[INFO] 添加用户个人配置');
+                    } else {
+                        console.warn('[WARN] 双人套餐但未找到用户配置');
+                    }
+                }
+                
+                console.log('[INFO] 提交配置到服务器');
+                // 提交配置到服务器
+                fetch(`${API_BASE_URL}/api/save-config`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        phone: phone,
+                        plan: plan,
+                        order_id: orderId,
+                        config: config
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    console.log('[INFO] 配置保存结果:', data);
+                    if (data.success) {
+                        alert('配置保存成功！您的服务已激活');
+                        
+                        // 清除会话存储中的临时数据
+                        sessionStorage.removeItem('pendingConfig');
+                        sessionStorage.removeItem('pendingPhone');
+                        sessionStorage.removeItem('pendingPlan');
+                        sessionStorage.removeItem('pendingUserConfig');
+                        sessionStorage.removeItem('currentOrderId');
+                    } else {
+                        alert('配置保存失败: ' + (data.message || '未知错误'));
+                    }
+                })
+                .catch(error => {
+                    console.error('[ERROR] 保存配置失败:', error);
+                    alert('保存配置失败: ' + error.message);
+                });
+            } catch (error) {
+                console.error('[ERROR] 处理配置保存错误:', error);
+                alert('处理配置时出错: ' + error.message);
+            }
+        }
+    </script>
+    
+    <!-- 51LA统计代码 - 放在body结束标签前 -->
+    <script type="text/javascript" src="//js.users.51.la/21954557.js"></script>
+</body>
+</html> 
