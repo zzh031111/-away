@@ -105,8 +105,8 @@
         
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h2>微信推送配置</h2>
-        </div>
-        
+                </div>
+                
         <!-- 使用前必看教程 -->
         <div class="tutorial-link">
             <strong>重要提示：</strong> 使用前请务必查看 <a href="https://bcn1jsdnj3t6.feishu.cn/wiki/DRsNwylmAiJxVokNmfnczd5XnMa" target="_blank" rel="noopener noreferrer">详细使用教程</a>，了解各项配置含义及获取方法！
@@ -125,13 +125,13 @@
                     <input type="password" class="form-control" id="password" placeholder="请设置密码">
                 </div>
             </div>
-        </div>
-        
+                </div>
+                
         <!-- 添加配置区域标题 -->
         <div class="mb-3">
             <h4>伴侣微信配置</h4>
-        </div>
-        
+                </div>
+                
         <!-- 配置区域 -->
         <div class="config-section" id="configSection">
             <form id="configForm">
@@ -214,7 +214,7 @@
                         <label for="userTemplateId" class="form-label required">您的模板ID</label>
                         <input type="text" class="form-control" id="userTemplateId" placeholder="请输入您的微信模板ID">
                         <div class="form-text">用于发送每日通知的模板ID</div>
-                    </div>
+                                    </div>
                     
                     <div class="mb-3">
                         <label for="locationName" class="form-label required">区/县</label>
@@ -224,22 +224,22 @@
                     <div class="mb-3">
                         <label for="admName" class="form-label required">城市</label>
                         <input type="text" class="form-control" id="admName" placeholder="例如：北京市">
-                    </div>
-                </div>
+                                    </div>
+                                </div>
                 <div class="d-grid gap-2 d-md-flex justify-content-md-end">
                     <button id="testSelfButton" type="button" class="btn btn-info">
                         <i class="bi bi-send"></i> 测试发送给您自己
                     </button>
                 </div>
-            </div>
-            
+                            </div>
+
             <!-- 将所有区域的保存按钮放在最下方 -->
             <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
                 <button id="saveButton" type="button" class="btn btn-primary btn-lg">
                     <i class="bi bi-check-circle"></i> 保存配置
                 </button>
             </div>
-        </div>
+                                    </div>
         
         <!-- 加载中提示 -->
         <div id="loadingSpinner" class="text-center mt-3" style="display: none;">
@@ -247,8 +247,8 @@
                 <span class="visually-hidden">加载中...</span>
             </div>
             <p class="mt-2">处理中，请稍候...</p>
-        </div>
-    </div>
+                                    </div>
+                                </div>
     
     <!-- 修改支付模态框，添加套餐选择 -->
     <div class="modal fade" id="paymentModal" tabindex="-1" aria-hidden="true">
@@ -272,14 +272,14 @@
                             <label class="form-check-label" for="annualPlan">
                                 年度套餐 - ¥<span id="modalPriceAnnual">29.9</span>
                             </label>
-                        </div>
+                            </div>
                         <div class="form-check mb-3">
                             <input class="form-check-input" type="radio" name="modal-plan" id="dualPlan" value="dual">
                             <label class="form-check-label" for="dualPlan">
                                 双人套餐 - ¥<span id="modalPriceDual">1</span>
                             </label>
                         </div>
-                        
+
                         <div class="mb-3">
                             <label for="phone" class="form-label">手机号码</label>
                             <input type="tel" class="form-control" id="phone" placeholder="请输入您的手机号码" required>
@@ -305,9 +305,9 @@
                     <div>
                         <button id="confirmPaymentButton" type="button" class="btn btn-primary">确认订阅</button>
                         <button id="paymentCompleteButton" type="button" class="btn btn-success" style="display:none;">我已完成支付</button>
-                    </div>
                 </div>
-            </div>
+                </div>
+        </div>
         </div>
     </div>
     
@@ -576,42 +576,96 @@
             });
         }
         
-        // 修复显示支付模态框函数
+        // 完全重写显示支付模态框函数，添加详细日志
         function showPaymentModal() {
             try {
-                console.log('打开支付模态框');
+                console.log('[DEBUG] 开始打开支付模态框');
                 
-                // 重置模态框状态
-                const planSelection = document.getElementById('planSelection');
-                const qrcodeSection = document.getElementById('qrcodeSection');
-                const confirmPaymentButton = document.getElementById('confirmPaymentButton');
-                const paymentCompleteButton = document.getElementById('paymentCompleteButton');
+                // 首先查找模态框元素
+                const modalElement = document.getElementById('paymentModal');
+                if (!modalElement) {
+                    console.error('[ERROR] 找不到支付模态框元素 #paymentModal');
+                    alert('找不到支付模态框，请刷新页面后重试');
+                    return;
+                }
+                console.log('[DEBUG] 找到模态框元素:', modalElement);
                 
-                if (!planSelection || !qrcodeSection || !confirmPaymentButton || !paymentCompleteButton) {
-                    console.error('找不到支付模态框必要元素', {
-                        planSelection: !!planSelection,
-                        qrcodeSection: !!qrcodeSection,
-                        confirmPaymentButton: !!confirmPaymentButton,
-                        paymentCompleteButton: !!paymentCompleteButton
-                    });
-                    alert('初始化支付界面失败，请刷新页面后重试');
+                // 检查并记录所有相关元素是否存在
+                const elements = {
+                    planSelection: document.getElementById('planSelection'),
+                    qrcodeSection: document.getElementById('qrcodeSection'),
+                    confirmPaymentButton: document.getElementById('confirmPaymentButton'),
+                    paymentCompleteButton: document.getElementById('paymentCompleteButton'),
+                    monthlyPlan: document.getElementById('monthlyPlan'),
+                    annualPlan: document.getElementById('annualPlan'),
+                    dualPlan: document.getElementById('dualPlan'),
+                    modalPriceMonthly: document.getElementById('modalPriceMonthly'),
+                    modalPriceAnnual: document.getElementById('modalPriceAnnual'),
+                    modalPriceDual: document.getElementById('modalPriceDual'),
+                    paymentQrcode: document.getElementById('paymentQrcode'),
+                    paymentLink: document.getElementById('paymentLink')
+                };
+                
+                // 记录所有元素状态
+                console.log('[DEBUG] 支付相关元素状态:', 
+                    Object.entries(elements).reduce((acc, [key, value]) => {
+                        acc[key] = !!value;
+                        return acc;
+                    }, {})
+                );
+                
+                // 检查必要元素
+                const missingElements = Object.entries(elements)
+                    .filter(([_, value]) => !value)
+                    .map(([key, _]) => key);
+                    
+                if (missingElements.length > 0) {
+                    console.error('[ERROR] 缺少必要的支付元素:', missingElements);
+                    alert(`初始化支付界面失败，缺少必要元素: ${missingElements.join(', ')}`);
                     return;
                 }
                 
                 // 重置模态框状态
-                planSelection.style.display = 'block';
-                qrcodeSection.style.display = 'none';
-                confirmPaymentButton.style.display = 'inline-block';
-                paymentCompleteButton.style.display = 'none';
+                console.log('[DEBUG] 重置模态框状态');
+                elements.planSelection.style.display = 'block';
+                elements.qrcodeSection.style.display = 'none';
+                elements.confirmPaymentButton.style.display = 'inline-block';
+                elements.paymentCompleteButton.style.display = 'none';
                 
                 // 显示模态框
-                const paymentModal = new bootstrap.Modal(document.getElementById('paymentModal'));
-                paymentModal.show();
-                
-                console.log('支付模态框已显示');
+                console.log('[DEBUG] 尝试显示模态框');
+                try {
+                    const modal = new bootstrap.Modal(modalElement);
+                    modal.show();
+                    console.log('[DEBUG] 模态框已成功显示');
+                } catch (modalError) {
+                    console.error('[ERROR] 显示模态框失败:', modalError);
+                    alert('无法显示支付界面: ' + modalError.message);
+                    
+                    // 尝试替代方法显示模态框
+                    try {
+                        console.log('[DEBUG] 尝试使用jQuery显示模态框');
+                        $(modalElement).modal('show');
+                        console.log('[DEBUG] 使用jQuery显示模态框成功');
+                    } catch (jqueryError) {
+                        console.error('[ERROR] jQuery显示模态框也失败:', jqueryError);
+                        // 最后尝试直接设置样式
+                        modalElement.style.display = 'block';
+                        modalElement.classList.add('show');
+                        document.body.classList.add('modal-open');
+                        
+                        // 创建模态框背景
+                        const backdrop = document.createElement('div');
+                        backdrop.classList.add('modal-backdrop', 'fade', 'show');
+                        document.body.appendChild(backdrop);
+                        
+                        console.log('[DEBUG] 使用直接样式设置显示模态框');
+                    }
+                }
             } catch (error) {
-                console.error('显示支付模态框失败:', error);
-                alert('打开支付界面失败: ' + error.message);
+                console.error('[ERROR] 显示支付模态框整体失败:', error);
+                console.error('[ERROR] 错误堆栈:', error.stack);
+                alert('打开支付界面失败，请刷新页面后重试: ' + error.message);
             }
         }
         
@@ -982,12 +1036,12 @@
                             console.error('找不到支付界面元素');
                             alert('显示支付信息失败，请刷新页面重试');
                         }
-                    } else {
+                } else {
                         alert('创建订单失败: ' + (data.message || '未知错误'));
                         console.error('创建订单失败:', data);
-                    }
-                })
-                .catch(error => {
+                }
+            })
+            .catch(error => {
                     // 隐藏加载中状态
                     if (loadingSpinner) {
                         loadingSpinner.style.display = 'none';
@@ -1061,6 +1115,71 @@
             
             return userConfig;
         }
+
+        // 确保Bootstrap正确初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('[INFO] 初始化Bootstrap模态框');
+            
+            // 检查Bootstrap是否可用
+            if (typeof bootstrap === 'undefined') {
+                console.error('[ERROR] Bootstrap未加载，尝试加载polyfill');
+                
+                // 如果没有Bootstrap，创建一个简单的polyfill
+                window.bootstrap = {
+                    Modal: function(element) {
+                        this.element = element;
+                        this.show = function() {
+                            console.log('[INFO] 使用polyfill显示模态框');
+                            element.style.display = 'block';
+                            element.classList.add('show');
+                            document.body.classList.add('modal-open');
+                            
+                            // 添加backdrop
+                            let backdrop = document.querySelector('.modal-backdrop');
+                            if (!backdrop) {
+                                backdrop = document.createElement('div');
+                                backdrop.classList.add('modal-backdrop', 'fade', 'show');
+                                document.body.appendChild(backdrop);
+                            }
+                        };
+                        
+                        this.hide = function() {
+                            element.style.display = 'none';
+                            element.classList.remove('show');
+                            document.body.classList.remove('modal-open');
+                            
+                            // 移除backdrop
+                            const backdrop = document.querySelector('.modal-backdrop');
+                            if (backdrop) {
+                                backdrop.remove();
+                            }
+                        };
+                    }
+                };
+            }
+            
+            // 为关闭按钮添加事件
+            const closeButtons = document.querySelectorAll('[data-bs-dismiss="modal"]');
+            closeButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const modalElement = this.closest('.modal');
+                    if (modalElement) {
+                        try {
+                            const modal = new bootstrap.Modal(modalElement);
+                            modal.hide();
+                        } catch (error) {
+                            // 降级方案
+                            modalElement.style.display = 'none';
+                            modalElement.classList.remove('show');
+                            document.body.classList.remove('modal-open');
+                            
+                            const backdrop = document.querySelector('.modal-backdrop');
+                            if (backdrop) backdrop.remove();
+                        }
+                    }
+                });
+            });
+        });
     </script>
     
     <!-- 51LA统计代码 - 放在body结束标签前 -->
